@@ -17,21 +17,19 @@
 
 ## 从源码运行
 
-源码在 `src/jianjin-refiner/`。本仓库不包含安装包。`package.json` 版本为 2.0.0。
+源码在仓库根目录。本仓库不包含安装包。`package.json` 版本为 2.0.0。
 
 ```bash
-cd src/jianjin-refiner
 npm install
 npm start            # 需先按 README 构建，或查看其 start/build 脚本
 npm test
 npm run build
 ```
-
 使用说明见 `文档/使用说明.md`（文档中的版本号可能早于 2.0.0，以 package.json 为准）。
 
 ## 文档
 
-- [源码 README](src/jianjin-refiner/README.md)
+- [源码 README](README.original.md)
 - [使用说明](文档/使用说明.md)
 - [规划文档](文档/规划文档.md)
 
@@ -58,21 +56,19 @@ npm run build
 
 ## Getting started
 
-Source is under `src/jianjin-refiner/`. This repository does not include installers. `package.json` reports version 2.0.0.
+Source is at the repository root. This repository does not include installers. `package.json` reports version 2.0.0.
 
 ```bash
-cd src/jianjin-refiner
 npm install
 npm start            # build first if the README requires it
 npm test
 npm run build
 ```
-
 The user guide is `文档/使用说明.md` (its version header may be older than 2.0.0; trust package.json).
 
 ## Documentation
 
-- [源码 README](src/jianjin-refiner/README.md)
+- [源码 README](README.original.md)
 - [使用说明](文档/使用说明.md)
 - [规划文档](文档/规划文档.md)
 
