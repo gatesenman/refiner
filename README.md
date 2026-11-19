@@ -1,20 +1,78 @@
-﻿# 渐进Refiner
+# 渐进 Refiner
 
-**简介**：渐进 Refiner：渐进式内容精修/评审工具
+**2.0.0** · 渐进式内容精修工具：先让 AI 大胆铺开整体，再一步步只改你选中的部分；你亲手改过的内容会被保护。
 
-**最新版本**：1.7.0
+## 功能特性
 
-## 文件清单
+- 默认简单模式，界面只保留完成任务所需控件；专家模式可查看智能体分工与流水线。
+- 演示模式无需 API Key，可用内置例子走完流程。
+- 可从已有 Word / PDF / Excel / XMind 等材料开始，支持参考资料、拖拽排序、并排对比版本。
+- 运行中显示生成内容，统计 tokens 与费用，支持预算上限、自动备份与 API Key 加密。
+- 你改过的内容不会被后续 AI 步骤覆盖。
 
-| 目录 | 文件 | 大小 | SHA256 |
-|---|---|---|---|
-| 安装包 | JianJin-Refiner-1.7.0-Setup.exe | 80.8 MB | `714692893C18CB6AAE418912CCE0744FCB469EF92AD2081B1188989BA4E17F73` |
-| 源代码 | 渐进Refiner-v1.7.0-源码.zip | 1.0 MB | `FF8D3CC3B2A2A3E17A677053C6153940AACE1C416F9BAFC310D9EF213CFDFA40` |
-| 文档 | 规划文档.md | 0.1 MB | `D3AA28F7F3481EBA773CCBF5931AA5F00220FB57FE7D71DFB5F53B24D98E5820` |
-| 文档 | 使用说明.md | 0.0 MB | `3D39C32E4998699DCD674A161CFD41BC2AEF211D35D76B66F0575EBF67A47D56` |
+## 技术栈
 
-## 安装 / 运行
+- Electron + TypeScript
+- Vitest
 
-运行 安装包\JianJin-Refiner-1.7.0-Setup.exe 安装；使用方法见 文档\使用说明.md
+## 从源码运行
 
-_整理时间：2026-10-14 16:05；原始文件仍保留在原位置，见上级目录 待删除清单.txt_
+源码在 `src/jianjin-refiner/`。本仓库不包含安装包。`package.json` 版本为 2.0.0。
+
+```bash
+cd src/jianjin-refiner
+npm install
+npm start            # 需先按 README 构建，或查看其 start/build 脚本
+npm test
+npm run build
+```
+
+使用说明见 `文档/使用说明.md`（文档中的版本号可能早于 2.0.0，以 package.json 为准）。
+
+## 文档
+
+- [源码 README](src/jianjin-refiner/README.md)
+- [使用说明](文档/使用说明.md)
+- [规划文档](文档/规划文档.md)
+
+---
+
+## English
+
+# Refiner
+
+**2.0.0** · A progressive refinement tool: let AI sketch the whole piece first, then tighten only what you select. Edits you make yourself are protected.
+
+## Features
+
+- Simple mode keeps only the controls needed to finish the job; expert mode shows agent roles and the pipeline.
+- Demo mode needs no API key and can run built-in examples end to end.
+- Start from existing Word / PDF / Excel / XMind materials, with references, drag-and-drop ordering, and side-by-side version compare.
+- Live generation preview, token and cost tracking, budget caps, automatic backups, and encrypted API keys.
+- Text you edited yourself is not overwritten by later AI steps.
+
+## Tech stack
+
+- Electron + TypeScript
+- Vitest
+
+## Getting started
+
+Source is under `src/jianjin-refiner/`. This repository does not include installers. `package.json` reports version 2.0.0.
+
+```bash
+cd src/jianjin-refiner
+npm install
+npm start            # build first if the README requires it
+npm test
+npm run build
+```
+
+The user guide is `文档/使用说明.md` (its version header may be older than 2.0.0; trust package.json).
+
+## Documentation
+
+- [源码 README](src/jianjin-refiner/README.md)
+- [使用说明](文档/使用说明.md)
+- [规划文档](文档/规划文档.md)
+
