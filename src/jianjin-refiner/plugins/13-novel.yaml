@@ -1,0 +1,35 @@
+id: novel-chapter
+name: 小说章节
+icon: ri-book-open-line
+category: 创作
+description: （扩展示例）构思 → 情节 → 场景细写 → 润色，四阶段、人物设定锁定
+renderer: doc
+views: [tree, mindmap]
+seedPlaceholder: 例如：雨夜，一名退休侦探收到了二十年前的信
+nodeSchema:
+  maxDepth: 3
+  childLabel: 场景
+  props:
+    - { key: pov, label: 视角人物, type: string }
+    - { key: mood, label: 氛围, type: enum, options: [紧张, 温情, 悬疑, 舒缓] }
+stages:
+  - { id: generate, name: 构思, description: 生成章节梗概与场景列表, freedom: { temperature: 1.2, scope: [artifact], ops: [generate], strictness: loose } }
+  - { id: plot, name: 情节, description: 调整场景顺序、增删场景, freedom: { temperature: 0.9, scope: [artifact, subtree], ops: [expand, restructure], strictness: schema, maxNewNodes: 4 } }
+  - { id: refine, name: 场景细写, description: 选中场景写出正文, freedom: { temperature: 0.8, scope: [subtree, node], ops: [detail], strictness: schema, lockedProps: [pov], requireTarget: true, maxNewNodes: 4 } }
+  - { id: adjust, name: 润色, description: 选中段落按指令润色, freedom: { temperature: 0.4, scope: [node], ops: [rewrite, patch], strictness: strict, requireTarget: true, lockedProps: [pov], maxNewNodes: 0 } }
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 7", loop: { with: critic, maxRounds: 2, until: "critic.score >= 7" } }
+exporters: [markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    content: 退休侦探老周在雨夜收到一封二十年前寄出的信，信中提到一桩他早已结案的失踪案。
+    children:
+      - { title: 雨夜来信, props: { pov: 老周, mood: 悬疑 } }
+      - { title: 旧档案, props: { pov: 老周, mood: 紧张 } }
+      - { title: 拜访当年的证人, props: { pov: 老周, mood: 舒缓 } }
+      - { title: 信封上的邮戳, props: { pov: 老周, mood: 悬疑 } }

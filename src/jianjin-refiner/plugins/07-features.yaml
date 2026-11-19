@@ -1,0 +1,43 @@
+id: features
+name: 功能清单
+icon: ri-list-check-3
+category: 产品
+description: 按模块组织、MoSCoW 优先级的功能清单
+renderer: table
+views: [board, tree]
+rendererOptions: { groupBy: priority }
+seedPlaceholder: 例如：一款面向自由职业者的记账 App
+nodeSchema:
+  maxDepth: 3
+  childLabel: 功能
+  props:
+    - { key: priority, label: 优先级, type: enum, options: [必须, 应该, 可以, 暂不] }
+    - { key: effort, label: 工作量, type: enum, options: [S, M, L, XL] }
+    - { key: status, label: 状态, type: enum, options: [规划中, 开发中, 已上线] }
+prompts:
+  domain: 一级节点是功能模块，二级节点是具体功能，content 写用户价值（作为…我希望…以便…）。
+stages: default
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [csv, markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 记账
+        children:
+          - { title: 快速记一笔, content: 作为自由职业者，我希望 3 秒内记一笔收支，以便不遗漏。, props: { priority: 必须, effort: M, status: 规划中 } }
+          - { title: 拍票据自动识别, props: { priority: 应该, effort: L, status: 规划中 } }
+      - title: 客户与项目
+        children:
+          - { title: 按项目归集收入, props: { priority: 必须, effort: M, status: 规划中 } }
+          - { title: 应收提醒, props: { priority: 应该, effort: S, status: 规划中 } }
+      - title: 报表与税务
+        children:
+          - { title: 月度收支报表, props: { priority: 必须, effort: M, status: 规划中 } }
+          - { title: 个税预估, props: { priority: 可以, effort: L, status: 规划中 } }
+          - { title: 多币种, props: { priority: 暂不, effort: XL, status: 规划中 } }

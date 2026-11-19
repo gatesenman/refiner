@@ -1,0 +1,35 @@
+id: mindmap
+name: 脑图
+icon: ri-mind-map
+category: 思维
+description: 发散—收敛的思维导图
+renderer: mindmap
+views: [tree]
+seedPlaceholder: 例如：如何提升团队的研发效率
+nodeSchema: { maxDepth: 5, childLabel: 分支 }
+prompts:
+  domain: 脑图中心主题明确，一级分支 4~7 个且互不重叠（MECE），叶子节点使用短语。
+stages:
+  - { id: generate, name: 发散, description: 围绕中心主题快速铺开分支, freedom: { temperature: 1.1, scope: [artifact], ops: [generate], strictness: loose } }
+  - { id: refine, name: 细化, description: 选中分支继续展开或重组 }
+  - { id: adjust, name: 收敛, description: 合并、改名、删减，形成定稿 }
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+exporters: [markdown, json, svg, png]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 流程
+        children: [{ title: 需求评审前置 }, { title: 小批量交付 }, { title: 自动化测试 }]
+      - title: 工具
+        children: [{ title: CI/CD 流水线 }, { title: 代码模板与脚手架 }, { title: AI 编程助手 }]
+      - title: 人
+        children: [{ title: 技能矩阵 }, { title: 结对与评审 }]
+      - title: 度量
+        children: [{ title: 交付周期 }, { title: 缺陷逃逸率 }, { title: 部署频率 }]
+      - title: 文化
+        children: [{ title: 心理安全 }, { title: 复盘不追责 }]

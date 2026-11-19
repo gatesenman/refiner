@@ -1,0 +1,45 @@
+id: image
+name: 图片
+icon: ri-image-2-line
+category: 媒体
+modality: image
+description: 从创意到构图到局部修改的图像创作
+renderer: gallery
+views: [table]
+media: { capability: image, promptField: prompt, outputField: url, scope: nodes, params: { size: 1024x1024 } }
+seedPlaceholder: 例如：赛博朋克风格的江南水乡夜景海报
+nodeSchema:
+  childLabel: 方案
+  props:
+    - { key: prompt, label: 提示词, type: text }
+    - { key: style, label: 风格, type: string }
+    - { key: composition, label: 构图, type: string }
+prompts:
+  domain: 每个子节点是一张候选图，必须包含 props.prompt（适合图像模型的中文或英文提示词，具体描述主体、场景、光线、风格、镜头）。
+stages:
+  - { id: generate, name: 创意, description: 生成 4 个风格迥异的候选方案, freedom: { temperature: 1.1, scope: [artifact], ops: [generate], strictness: loose } }
+  - { id: refine, name: 细化, description: 选中方案补充构图、光线等细节并重新出图, freedom: { temperature: 0.7, scope: [artifact, subtree], ops: [detail, expand], strictness: schema, maxNewNodes: 4 } }
+  - id: adjust
+    name: 调整
+    description: 选中一张图，用一句话做局部修改并重绘
+    freedom: { temperature: 0.3, scope: [node], ops: [patch], strictness: strict, requireTarget: true, lockedProps: [style], maxNewNodes: 0 }
+    pipeline:
+      steps:
+        - { id: generator, role: generator }
+        - { id: consistency, role: consistency, needs: [generator] }
+        - { id: imager, role: media, name: 图像生成, needs: [consistency] }
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: imager, role: media, name: 图像生成, needs: [reviser] }
+exporters: [images, json]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - { title: 方案A · 霓虹倒影, props: { prompt: "江南水乡夜景，霓虹灯倒映在河面，乌篷船，赛博朋克，青紫色调，广角", style: 赛博朋克, composition: 对称中景 } }
+      - { title: 方案B · 雨夜石桥, props: { prompt: "雨夜石拱桥，全息广告牌，撑伞行人，电影感光影，低机位", style: 电影写实, composition: 低机位仰拍 } }
+      - { title: 方案C · 俯瞰古镇, props: { prompt: "俯瞰古镇，粉墙黛瓦与发光电路交织，无人机视角，等距插画", style: 等距插画, composition: 俯视全景 } }
+      - { title: 方案D · 茶馆机器人, props: { prompt: "老茶馆里机器人在泡茶，暖色灯笼，水墨与像素混合风格", style: 水墨像素, composition: 室内近景 } }

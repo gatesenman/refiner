@@ -1,0 +1,47 @@
+id: video
+name: 视频
+icon: ri-movie-2-line
+category: 媒体
+modality: video
+description: 剧本 → 分镜 → 镜头调整 → 出片（四阶段，演示阶段数可自定义）
+renderer: gallery
+views: [table, tree]
+rendererOptions: { mode: storyboard }
+media: { capability: video, promptField: prompt, outputField: video, scope: root, paramProps: { duration: duration } }
+seedPlaceholder: 例如：30 秒新品咖啡机宣传短片
+nodeSchema:
+  childLabel: 镜头
+  props:
+    - { key: duration, label: 时长(秒), type: number }
+    - { key: shot, label: 景别, type: enum, options: [远景, 全景, 中景, 近景, 特写] }
+    - { key: camera, label: 运镜, type: string }
+    - { key: prompt, label: 画面提示词, type: text }
+    - { key: voice, label: 旁白/台词, type: text }
+prompts:
+  domain: 根节点是整片，子节点是按时间顺序排列的镜头。每个镜头写明景别、运镜、画面提示词与旁白，总时长与种子要求一致。
+stages:
+  - { id: generate, name: 剧本, description: 生成故事线与粗分镜, freedom: { temperature: 1.0, scope: [artifact], ops: [generate], strictness: loose } }
+  - { id: refine, name: 分镜, description: 细化每个镜头的景别、运镜和画面, freedom: { temperature: 0.7, scope: [artifact, subtree], ops: [detail, expand, restructure], strictness: schema, maxNewNodes: 6 } }
+  - { id: adjust, name: 镜头调整, description: 选中镜头做精确修改, freedom: { temperature: 0.3, scope: [node], ops: [patch, rewrite], strictness: strict, requireTarget: true, maxNewNodes: 1 } }
+  - id: render
+    name: 出片
+    description: 把定稿分镜提交给视频服务（未配置则只保留脚本，不伪造视频）
+    freedom: { temperature: 0, scope: [artifact], ops: [patch], strictness: strict, maxNewNodes: 0, frozen: true }
+    pipeline: { steps: [ { id: render, role: media, name: 视频生成 } ] }
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+exporters: [markdown, csv, json]
+demo:
+  root:
+    title: "{{seed}}"
+    props: { duration: 30 }
+    children:
+      - { title: 清晨厨房, content: 阳光洒进厨房，咖啡机静静伫立。, props: { duration: 4, shot: 全景, camera: 缓慢推近, prompt: "清晨阳光照进极简厨房，银色咖啡机，暖色调", voice: "每一天，从一杯好咖啡开始。" } }
+      - { title: 一键萃取, content: 手指轻触按键，咖啡液流出。, props: { duration: 6, shot: 特写, camera: 固定微距, prompt: "手指按下咖啡机按钮特写，浓缩咖啡流出，油脂丰富", voice: "" } }
+      - { title: 奶泡拉花, props: { duration: 8, shot: 近景, camera: 俯拍旋转, prompt: "奶泡倒入咖啡杯形成心形拉花，俯拍", voice: "专业级奶泡，在家也能拉花。" } }
+      - { title: 品尝时刻, props: { duration: 7, shot: 中景, camera: 跟拍, prompt: "年轻人在窗边品尝咖啡，微笑，浅景深", voice: "" } }
+      - { title: 产品收尾, props: { duration: 5, shot: 特写, camera: 环绕, prompt: "咖啡机产品环绕展示，品牌 logo，干净背景", voice: "XX 咖啡机，好咖啡不等待。" } }

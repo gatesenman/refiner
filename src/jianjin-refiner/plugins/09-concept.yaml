@@ -1,0 +1,42 @@
+id: concept
+name: 概念
+icon: ri-lightbulb-line
+category: 思维
+description: 把一个模糊想法逐步打磨成结构化的概念文档（定义、要素、示例、边界）
+renderer: doc
+views: [mindmap, tree]
+seedPlaceholder: 例如：“渐进式精化”作为一种产品设计方法
+nodeSchema:
+  maxDepth: 3
+  childLabel: 要素
+  props:
+    - { key: kind, label: 类别, type: enum, options: [定义, 要素, 示例, 边界, 类比, 问题] }
+prompts:
+  domain: 一级节点是概念卡片，类别覆盖定义、核心要素、正反示例、适用边界、类比与开放问题。
+stages:
+  - { id: generate, name: 萌芽, description: 用几张卡片勾勒概念轮廓 }
+  - { id: refine, name: 成形, description: 补充要素、示例与边界 }
+  - { id: adjust, name: 定稿, description: 精确修改措辞与定义 }
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    content: 一种“先发散、后收敛”的创作方法：每个阶段都比上一阶段拥有更少的自由度和更多的约束。
+    children:
+      - { title: 定义, content: 将创作过程拆分为若干阶段，每个阶段的可变范围、可用操作和随机性单调递减。, props: { kind: 定义 } }
+      - title: 核心要素
+        props: { kind: 要素 }
+        children:
+          - { title: 阶段, content: 生成 → 细化 → 调整，数量可配置 }
+          - { title: 自由度, content: 温度、作用域、可用算子、约束强度 }
+          - { title: 版本树, content: 每一步可回溯、可分叉 }
+      - { title: 示例, content: 写作：选题 → 大纲 → 段落 → 措辞；设计：草图 → 线框 → 视觉稿 → 像素级调整。, props: { kind: 示例 } }
+      - { title: 适用边界, content: 不适合目标完全确定、一次即可完成的任务。, props: { kind: 边界 } }
+      - { title: 类比, content: 雕塑——先粗坯，再塑形，最后打磨。, props: { kind: 类比 } }

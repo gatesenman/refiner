@@ -1,0 +1,47 @@
+id: plan
+name: 计划
+icon: ri-calendar-schedule-line
+category: 管理
+description: 带起止日期的阶段计划，甘特图展示
+renderer: timeline
+views: [table, tree]
+seedPlaceholder: 例如：三个月内完成产品 MVP 并获得 100 个种子用户
+nodeSchema:
+  maxDepth: 3
+  childLabel: 事项
+  props:
+    - { key: start, label: 开始, type: date }
+    - { key: end, label: 结束, type: date }
+    - { key: owner, label: 负责人, type: string }
+    - { key: milestone, label: 里程碑, type: enum, options: [否, 是] }
+prompts:
+  domain: 一级节点是阶段，二级节点是事项；每个节点都必须有 start/end（YYYY-MM-DD），阶段时间覆盖其事项，事项不超过两周。
+stages: default
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [csv, markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 第一阶段：验证
+        props: { start: "2026-10-12", end: "2026-11-01", owner: 全员 }
+        children:
+          - { title: 用户访谈 20 人, props: { start: "2026-10-12", end: "2026-10-22", owner: 产品 } }
+          - { title: 竞品分析, props: { start: "2026-10-15", end: "2026-10-24", owner: 产品 } }
+          - { title: 问题定义评审, props: { start: "2026-10-30", end: "2026-11-01", owner: 全员, milestone: 是 } }
+      - title: 第二阶段：构建
+        props: { start: "2026-11-02", end: "2026-12-06", owner: 研发 }
+        children:
+          - { title: 核心功能开发, props: { start: "2026-11-02", end: "2026-11-25", owner: 研发 } }
+          - { title: 内测, props: { start: "2026-11-24", end: "2026-12-06", owner: 测试, milestone: 是 } }
+      - title: 第三阶段：增长
+        props: { start: "2026-12-07", end: "2027-01-10", owner: 运营 }
+        children:
+          - { title: 种子用户招募, props: { start: "2026-12-07", end: "2026-12-27", owner: 运营 } }
+          - { title: 达成 100 个种子用户, props: { start: "2027-01-08", end: "2027-01-10", owner: 运营, milestone: 是 } }

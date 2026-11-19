@@ -1,0 +1,52 @@
+id: yaml
+name: YAML 文件
+icon: ri-code-s-slash-line
+category: 工程
+description: 配置文件 / CI 流水线 / K8s 清单等 YAML，带实时语法校验
+output: text
+language: yaml
+renderer: code
+seedPlaceholder: 例如：Node.js 项目的 GitHub Actions CI，含测试与发布
+prompts:
+  domain: 输出必须是合法 YAML，使用两个空格缩进，关键字段写注释。
+stages:
+  - { id: generate, name: 生成, description: 生成可用的骨架 }
+  - { id: refine, name: 细化, description: 补全字段、默认值与注释, freedom: { temperature: 0.5, scope: [artifact, subtree], ops: [detail, expand], strictness: schema } }
+  - { id: adjust, name: 调整, description: 选中几行，按指令精确修改（未选中部分逐字不变）, freedom: { temperature: 0.2, scope: [node, subtree], ops: [patch], strictness: strict, requireTarget: true } }
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+exporters: [yaml, json]
+demo:
+  text: |
+    # {{seed}}
+    name: CI
+    on:
+      push:
+        branches: [main]
+      pull_request:
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        strategy:
+          matrix:
+            node: [18, 20]
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with:
+              node-version: ${{ matrix.node }}
+              cache: npm
+          - run: npm ci
+          - run: npm test
+      release:
+        needs: test
+        if: startsWith(github.ref, 'refs/tags/')
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          - run: npm publish
+            env:
+              NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

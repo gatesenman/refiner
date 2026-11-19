@@ -1,0 +1,46 @@
+id: tasks
+name: 项目任务
+icon: ri-task-line
+category: 管理
+description: 项目管理任务拆解（WBS），看板/表格双视图
+renderer: board
+views: [table, tree]
+rendererOptions: { groupBy: status }
+seedPlaceholder: 例如：上线一个微信小程序商城
+nodeSchema:
+  maxDepth: 3
+  childLabel: 任务
+  props:
+    - { key: status, label: 状态, type: enum, options: [待办, 进行中, 已完成] }
+    - { key: priority, label: 优先级, type: enum, options: [P0, P1, P2] }
+    - { key: owner, label: 负责人, type: string }
+    - { key: estimate, label: 估时(小时), type: number }
+prompts:
+  domain: 一级节点是工作包，二级节点是可在 1~3 天内完成的具体任务，任务标题用“动词+对象”。
+stages: default
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [csv, markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 需求与设计
+        children:
+          - { title: 梳理核心购物流程, props: { status: 已完成, priority: P0, owner: 产品, estimate: 8 } }
+          - { title: 输出高保真原型, props: { status: 进行中, priority: P0, owner: 设计, estimate: 16 } }
+      - title: 开发
+        children:
+          - { title: 搭建小程序框架与登录, props: { status: 进行中, priority: P0, owner: 前端, estimate: 12 } }
+          - { title: 实现商品列表与详情, props: { status: 待办, priority: P0, owner: 前端, estimate: 16 } }
+          - { title: 对接微信支付, props: { status: 待办, priority: P0, owner: 后端, estimate: 20 } }
+          - { title: 订单管理后台, props: { status: 待办, priority: P1, owner: 后端, estimate: 24 } }
+      - title: 测试与上线
+        children:
+          - { title: 编写测试用例, props: { status: 待办, priority: P1, owner: 测试, estimate: 8 } }
+          - { title: 提交审核与发布, props: { status: 待办, priority: P0, owner: 产品, estimate: 4 } }

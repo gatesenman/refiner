@@ -1,0 +1,48 @@
+id: api-design
+name: API 设计
+icon: ri-plug-line
+category: 工程
+description: （未在需求中列出的扩展示例）资源 → 接口 → 字段，新增了一个“安全审查”智能体角色
+renderer: table
+views: [tree, board]
+rendererOptions: { groupBy: method }
+seedPlaceholder: 例如：在线预约挂号系统的 REST API
+nodeSchema:
+  maxDepth: 3
+  childLabel: 接口
+  props:
+    - { key: method, label: 方法, type: enum, options: [GET, POST, PUT, PATCH, DELETE] }
+    - { key: path, label: 路径, type: string }
+    - { key: auth, label: 鉴权, type: enum, options: [公开, 用户, 管理员] }
+prompts:
+  domain: 一级节点是资源，二级节点是接口（RESTful），content 写请求与响应要点。
+roles:
+  security:
+    name: 安全审查
+    icon: ri-shield-keyhole-line
+    output: review
+    temperatureDelta: -0.6
+    system: 你是 API 安全专家，关注鉴权、越权、敏感数据暴露与限流。
+    task: "请审查以下 API 草稿的安全性：\n{{draft}}\n输出 JSON：{\"score\": 0~10, \"issues\": [], \"suggestions\": []}"
+stages: default
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: security, role: security, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic, security], when: "critic.score < 8 || security.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [csv, markdown, json]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 医生 /doctors
+        children:
+          - { title: 查询医生列表, props: { method: GET, path: /doctors, auth: 公开 } }
+          - { title: 查询医生排班, props: { method: GET, path: "/doctors/{id}/schedules", auth: 公开 } }
+      - title: 预约 /appointments
+        children:
+          - { title: 创建预约, props: { method: POST, path: /appointments, auth: 用户 } }
+          - { title: 取消预约, props: { method: DELETE, path: "/appointments/{id}", auth: 用户 } }
+          - { title: 预约统计, props: { method: GET, path: /admin/appointments/stats, auth: 管理员 } }

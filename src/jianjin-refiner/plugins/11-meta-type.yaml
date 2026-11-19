@@ -1,0 +1,73 @@
+id: meta.type
+name: 类型定义（元类型）
+icon: ri-flask-line
+category: 元
+description: 用同样的“生成 → 细化 → 调整”流程，让 AI 设计一个新的内容类型插件；定稿后一键安装
+output: text
+language: yaml
+renderer: code
+actions: [installAsType]
+checks: [type-manifest]
+seedPlaceholder: 例如：读书笔记——从书名生成章节摘要、金句、行动清单
+prompts:
+  domain: |
+    你在设计“渐进 Refiner”的内容类型插件（YAML）。可用字段：
+    id（小写字母/数字/点/横线）, name, icon（Remix Icon 图标名，形如 ri-xxx-line，例如 ri-book-open-line / ri-task-line / ri-lightbulb-line / ri-calendar-line / ri-team-line / ri-code-s-slash-line / ri-image-line / ri-music-2-line；不要用 emoji）, category, description,
+    output(tree|text), language(仅 text), renderer(tree|mindmap|table|board|timeline|code|gallery|doc), views(其它可切换视图数组),
+    rendererOptions(如 groupBy), nodeSchema{maxDepth, childLabel, props[{key,label,type(string|text|number|enum|date|url),options}]},
+    stages(数组，每项 {id,name,description,freedom{temperature,scope[artifact|subtree|node],ops[generate|expand|restructure|detail|rewrite|patch],strictness(loose|schema|strict),maxNewNodes,requireTarget,lockedProps}}；自由度必须逐阶段递减；或直接写 default),
+    pipeline{steps[{id,role(planner|generator|critic|reviser|consistency|media|自定义),needs,when,loop{with,maxRounds,until}}]},
+    media{capability(image|video|…),promptField,outputField,scope(nodes|root)}（仅媒体类类型需要）,
+    roles(可新增角色 {name, icon(图标名), output(plan|artifact|review), system, task}), prompts{domain, format}, exporters, seedPlaceholder, demo{root}。
+stages:
+  - { id: generate, name: 草拟类型, description: 根据一句话描述生成类型插件草案 }
+  - { id: refine, name: 完善, description: 补充 schema、阶段自由度与智能体流水线, freedom: { temperature: 0.5, scope: [artifact, subtree], ops: [detail, expand], strictness: schema } }
+  - { id: adjust, name: 调整, description: 选中某几行精确修改, freedom: { temperature: 0.2, scope: [node, subtree], ops: [patch], strictness: strict, requireTarget: true } }
+pipeline:
+  steps:
+    - { id: generator, role: generator }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+exporters: [yaml]
+demo:
+  text: |
+    # 由 AI 设计的新类型：{{seed}}
+    id: reading-notes
+    name: 读书笔记
+    icon: ri-book-2-line
+    category: 学习
+    description: 从书名出发，生成章节摘要、金句与行动清单
+    renderer: doc
+    views: [tree, mindmap, table]
+    nodeSchema:
+      maxDepth: 3
+      childLabel: 笔记
+      props:
+        - { key: kind, label: 类别, type: enum, options: [摘要, 金句, 行动, 疑问] }
+        - { key: chapter, label: 章节, type: string }
+    stages:
+      - id: generate
+        name: 速读
+        description: 生成全书结构与每章一句话摘要
+        freedom: { temperature: 0.9, scope: [artifact], ops: [generate], strictness: loose }
+      - id: refine
+        name: 精读
+        description: 选中章节展开要点与金句
+        freedom: { temperature: 0.6, scope: [artifact, subtree], ops: [expand, detail], strictness: schema }
+      - id: adjust
+        name: 内化
+        description: 把要点改写为自己的行动清单
+        freedom: { temperature: 0.3, scope: [node], ops: [rewrite, patch], strictness: strict, requireTarget: true }
+    pipeline:
+      steps:
+        - { id: generator, role: generator }
+        - { id: critic, role: critic, needs: [generator] }
+        - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8" }
+    exporters: [markdown, json]
+    demo:
+      root:
+        title: "{{seed}}"
+        children:
+          - { title: 第一章 核心观点, content: 用一句话概括本章, props: { kind: 摘要, chapter: "1" } }
+          - { title: 金句, content: “摘录最打动你的一句话”, props: { kind: 金句, chapter: "1" } }
+          - { title: 本周行动, content: 选一个观点在工作中试用, props: { kind: 行动 } }

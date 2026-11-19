@@ -1,0 +1,45 @@
+id: outline
+name: 大纲
+icon: ri-file-list-3-line
+category: 文档
+description: 层级化的文章/报告/课程大纲
+renderer: tree
+views: [mindmap, doc]
+seedPlaceholder: 例如：面向中小企业的 AI 落地培训课程
+nodeSchema:
+  maxDepth: 4
+  childLabel: 小节
+prompts:
+  domain: 好的大纲层次分明、平行条目粒度一致、每一节都能回答“讲什么、为什么”。
+stages: default
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [markdown, json, opml]
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - title: 一、背景与目标
+        children:
+          - { title: 行业现状与痛点 }
+          - { title: 本课程要解决的问题 }
+      - title: 二、核心概念
+        children:
+          - { title: 什么是大模型 }
+          - { title: 提示词与上下文 }
+          - { title: 智能体与工具调用 }
+      - title: 三、落地方法
+        children:
+          - { title: 场景识别与优先级 }
+          - { title: 最小可行试点 }
+          - { title: 评估与迭代 }
+      - title: 四、案例与实操
+        children:
+          - { title: 客服知识库问答 }
+          - { title: 销售线索自动整理 }
+      - title: 五、总结与行动清单

@@ -1,0 +1,18 @@
+# 最小插件示例：通过 extends 继承“大纲”，只改名字与领域提示词——零行核心代码
+id: weekly-report
+extends: outline
+name: 周报
+icon: ri-calendar-check-line
+category: 文档
+description: （扩展示例）继承大纲类型，仅覆盖提示词
+seedPlaceholder: 例如：本周完成了支付模块联调，下周开始压测
+prompts:
+  domain: 周报结构固定为：本周完成、进行中、风险与求助、下周计划；每条带量化结果。
+demo:
+  root:
+    title: "{{seed}}"
+    children:
+      - { title: 本周完成, children: [{ title: 支付模块联调通过 }] }
+      - { title: 进行中, children: [{ title: 订单退款流程 }] }
+      - { title: 风险与求助, children: [{ title: 压测环境资源不足 }] }
+      - { title: 下周计划, children: [{ title: 完成全链路压测 }] }

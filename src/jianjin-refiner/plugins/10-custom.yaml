@@ -1,0 +1,22 @@
+id: custom
+name: 自定义类型
+icon: ri-shapes-line
+category: 通用
+description: 通用节点树：任何“由粗到细”的内容都能用它开始，所有视图均可切换
+renderer: tree
+views: [mindmap, table, board, doc]
+rendererOptions: { groupBy: status }
+seedPlaceholder: 任意主题，例如：家庭装修全流程
+nodeSchema:
+  childLabel: 条目
+  props:
+    - { key: status, label: 状态, type: enum, options: [待定, 进行中, 完成] }
+stages: default
+pipeline:
+  steps:
+    - { id: planner, role: planner }
+    - { id: generator, role: generator, needs: [planner] }
+    - { id: critic, role: critic, needs: [generator] }
+    - { id: reviser, role: reviser, needs: [critic], when: "critic.score < 8", loop: { with: critic, maxRounds: 2, until: "critic.score >= 8" } }
+    - { id: consistency, role: consistency, needs: [reviser] }
+exporters: [markdown, json, csv]
