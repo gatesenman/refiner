@@ -10,6 +10,19 @@
 - 运行中显示生成内容，统计 tokens 与费用，支持预算上限、自动备份与 API Key 加密。
 - 你改过的内容不会被后续 AI 步骤覆盖。
 
+## 下载
+
+本仓库目前没有已发布的 GitHub Release 安装包。请从源码运行。GitHub 自动生成的 Source code zip/tar 不算安装包。
+
+## 界面截图
+
+仓库里目前还没有已提交的真实产品界面截图（图标、logo 或品牌图不算）。请不要把下列预留路径当成已经存在的图片去引用（避免破链）。待在真实运行窗口中截取后放入：
+
+- `docs/screenshots/01-workbench.png`
+- `docs/screenshots/02-main-or-result.png`
+
+截图说明必须写明操作系统、软件版本、是否示例/演示数据，以及是否在 Windows 安装后截取。
+
 ## 技术栈
 
 - Electron + TypeScript
@@ -55,6 +68,19 @@ npm run build
 - Start from existing Word / PDF / Excel / XMind materials, with references, drag-and-drop ordering, and side-by-side version compare.
 - Live generation preview, token and cost tracking, budget caps, automatic backups, and encrypted API keys.
 - Text you edited yourself is not overwritten by later AI steps.
+
+## Downloads
+
+This repository has no published GitHub Release installer. Run it from source. The automatic Source code zip/tar from GitHub is not an installer.
+
+## Screenshots
+
+No real product-window screenshot has been committed yet (icons, logos, and brand art do not count). Do not add markdown image links to the reserved paths below until the files exist (that would be a broken link). After a live capture, place:
+
+- `docs/screenshots/01-workbench.png`
+- `docs/screenshots/02-main-or-result.png`
+
+Captions must state the OS, version, whether the data is sample/demo, and whether the shot was taken after a Windows install.
 
 ## Tech stack
 
