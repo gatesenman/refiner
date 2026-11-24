@@ -137,19 +137,31 @@ function Prefs() {
   const [t, setT] = useState('');
   return (
     <div className="facts prefs">
-      <div className="facts-h"><Icon name="ri-user-heart-line" /><b>你的偏好</b><span className="muted">（从你撤回的改动中学到的，之后每一步 AI 都会避开；可以停用）</span></div>
+      <div className="facts-h"><Icon name="ri-user-heart-line" /><b>你的偏好</b><span className="muted">（从你撤回的改动中学到的；可设为所有作品通用，也可导出/导入）</span></div>
       {!ps.length && <div className="hint">还没有。撤回某处 AI 改动时，会自动记一条在这里。</div>}
-      {ps.map((p) => (
+      {ps.map((p) => {
+        const global = p.scope === 'global' || (s.settings.globalPrefs ?? []).some((g) => g.text === p.text);
+        return (
         <div key={p.id} className={`fact pref ${p.on ? '' : 'off'}`}>
           <span className="fa">{p.text}</span>
-          <span className="muted" style={{ fontSize: 11 }}>{p.from === 'user' ? '手填' : p.from === 'undoAll' ? '整次撤回' : '撤回'}{(p.hits ?? 1) > 1 ? ` ×${p.hits}` : ''}</span>
+          <span className="muted" style={{ fontSize: 11 }}>{global ? '所有作品' : '仅本作品'} · {p.from === 'user' ? '手填' : p.from === 'undoAll' ? '整次撤回' : '撤回'}{(p.hits ?? 1) > 1 ? ` ×${p.hits}` : ''}</span>
+          {!global ? <button className="btn sm ghost" title="以后的作品也遵守" onClick={() => s.promotePref(p.id)}>用于所有作品</button> : <button className="btn sm ghost" onClick={() => s.demotePref(p.id)}>仅本作品</button>}
           <button className="btn sm ghost" title={p.on ? '停用这条' : '重新启用'} onClick={() => s.togglePref(p.id)}>{p.on ? '停用' : '启用'}</button>
           <button className="icon-btn" title="删除" onClick={() => s.removePref(p.id)}><Icon name="ri-close-line" /></button>
+        </div>
+        );
+      })}
+      {(s.settings.globalPrefs ?? []).filter((g) => !ps.some((p) => p.text === g.text)).map((p) => (
+        <div key={p.id} className={`fact pref ${p.on ? '' : 'off'}`}>
+          <span className="fa">{p.text}</span>
+          <span className="muted" style={{ fontSize: 11 }}>所有作品</span>
         </div>
       ))}
       <div className="row" style={{ gap: 6 }}>
         <input className="input" style={{ flex: 1 }} placeholder="也可以直接写，如：不要用英文缩写" value={t} onChange={(e) => setT(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && t.trim()) { s.addUserPref(t); setT(''); } }} />
         <button className="btn sm" disabled={!t.trim()} onClick={() => { s.addUserPref(t); setT(''); }}>添加</button>
+        <button className="btn sm ghost" onClick={async () => { const json = s.exportPrefsJson(); const r = await window.api.saveFile('偏好.json', json); if (r) s.toast('已导出偏好', 'success'); }}>导出</button>
+        <label className="btn sm ghost" style={{ margin: 0 }}>导入<input type="file" accept="application/json,.json" hidden onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (!f) return; s.importPrefsJson(await f.text()); }} /></label>
       </div>
     </div>
   );

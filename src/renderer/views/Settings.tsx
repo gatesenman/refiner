@@ -212,6 +212,14 @@ function CostCard({ st, setSt }: CardP) {
           </select></label>
         <span className="hint">“往下展开全部”“细化最粗的 3 处”和多选时生效。并行更快，但服务商有频率限制时可调小。</span>
       </div>
+      <div className="row" style={{ alignItems: 'flex-start', marginTop: 12 }}>
+        <button className={`switch ${st.confirmEach ? 'on' : ''}`} onClick={() => setSt({ ...st, confirmEach: !st.confirmEach })} style={{ marginTop: 2 }} />
+        <div><b>多处细化时逐处确认</b><div className="hint">改完一处先问你「保留 / 撤回」，再继续其余。打开后不再并行合并成一次审阅。</div></div>
+      </div>
+      <div className="row" style={{ alignItems: 'flex-start', marginTop: 12 }}>
+        <button className={`switch ${(st.survey !== false) ? 'on' : ''}`} onClick={() => setSt({ ...st, survey: st.survey === false })} style={{ marginTop: 2 }} />
+        <div><b>第一次铺整体前先多角度看一看</b><div className="hint">用「执行者 / 审查者 / 使用者」三个过程角色各写一段备忘，再开始生成。失败会自动跳过。</div></div>
+      </div>
     </div>
   );
 }

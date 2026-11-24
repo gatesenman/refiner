@@ -7,6 +7,8 @@ import { ActionBar } from '../components/ActionBar';
 import { ChangeList } from '../components/Compare';
 import { RefsPanel, LivePreview, UsageChip } from './WorkExtras';
 import { ReadyChip, RoughStrip, AskCard, SourceLink, SourceBanner, Handoff, DeriveRow } from './V17';
+import { DraftSide, ConfirmCard, SurveyCard } from '../components/DraftSide';
+import { changeMap } from '../../core';
 import { useEscClose } from '../esc';
 import { Coach, coachSeen } from './V18';
 import { Inspector } from '../components/RightPanel';
@@ -275,6 +277,7 @@ export function ArtifactView() {
   const pend = a ? pendingReview(a) : undefined;
   const reasons = useMemo(() => (chg && a ? changeReasons(a.root, chg.map, m, chg.version.summary?.issues, chg.version.summary?.whys) : undefined), [chg, a, m]);
   const running = s.run.running && s.run.artifactId === a?.id;
+  const cfm = s.run.confirm;
   // 运行完成：自动滚动到第一处改动
   useEffect(() => {
     if (running || !pend) return;
@@ -317,21 +320,24 @@ export function ArtifactView() {
       ) : <StepBar />}
       <Banners />
       <div className="split-v">
+        <div className="work-main">
         <div className="canvas-wrap">
           <div className={`canvas ${running ? 'is-running' : ''} ${running && s.run.lastOp?.op !== 'generate' && selNode ? 'has-target' : ''}`} style={R.fill ? { overflow: 'hidden' } : undefined}>
             {finished && <FinishCard />}
             {coach && !running && !finished && !!a.root.children?.length && <Coach onDone={() => setCoach(false)} />}
             {running && m.output === 'tree' && <LivePreview replace={!a.root.children?.length} />}
-            {!(running && m.output === 'tree' && !a.root.children?.length) && <R.C art={a} m={m} root={a.root} sel={s.selectedId} multi={s.multiSel.length >= 2 ? s.multiSel : undefined}
+            {!(running && m.output === 'tree' && !a.root.children?.length) && <R.C art={a} m={m} root={cfm?.preview ?? a.root} sel={s.selectedId} multi={s.multiSel.length >= 2 ? s.multiSel : undefined}
               onSelect={(id, add) => { if (add && id && id !== a.root.id) s.toggleMulti(id); else { s.clearMulti(); s.setSelectedId(id); } }} onChange={(root, label) => s.manualEdit(root, label)}
-              changes={running ? undefined : chg?.map}
-              review={chg ? { whyOf: (id) => reasons?.get(id), onKeep: s.keepOne, onRevert: s.revertOne } : undefined} />}
+              changes={running && !cfm ? undefined : (cfm ? changeMap(cfm.base, cfm.preview).map : chg?.map)}
+              review={chg && !cfm ? { whyOf: (id) => reasons?.get(id), onKeep: s.keepOne, onRevert: s.revertOne } : undefined} />}
           </div>
-          {!expert && selNode && !running && (
+          {!expert && selNode && !running && !cfm && !chg && (
             <div className="inspector-float">
               <Inspector floating />
             </div>
           )}
+        </div>
+        <DraftSide />
         </div>
         {dock && (
           <div className="dock">
@@ -345,6 +351,8 @@ export function ArtifactView() {
             <div className="dock-body">{dock === 'log' ? <AgentLog /> : dock === 'refs' ? <RefsPanel /> : <Versions />}</div>
           </div>
         )}
+        <ConfirmCard />
+        <SurveyCard />
         <AskCard />
         <RoughStrip />
         <ActionBar logOpen={dock === 'log'} onToggleLog={() => setDock(dock === 'log' ? null : 'log')} />

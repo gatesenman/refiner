@@ -6,7 +6,8 @@
 import type { ArtNode } from './types';
 import type { NodeChange } from './versions';
 
-export interface Pref { id: string; text: string; on: boolean; from: 'revert' | 'undoAll' | 'user'; at: number; hits?: number }
+export type PrefScope = 'work' | 'global';
+export interface Pref { id: string; text: string; on: boolean; from: 'revert' | 'undoAll' | 'user'; at: number; hits?: number; scope?: PrefScope }
 export const MAX_PREFS = 8;
 
 /** 撤回一处改动 → 一句偏好 */
@@ -31,4 +32,39 @@ export function addPref(list: Pref[] | undefined, text: string, from: Pref['from
 export function prefBlock(list: Pref[] | undefined): string {
   const on = (list ?? []).filter((p) => p.on);
   return on.length ? `\n\n【用户偏好】以下是从用户撤回的改动中学到的，务必避免：\n${on.map((p) => `- ${p.text}`).join('\n')}` : '';
+}
+
+/** 合并本作品 + 全局偏好（同句去重，作品级覆盖全局的开关） */
+export function effectivePrefs(work?: Pref[], global?: Pref[]): Pref[] {
+  const out: Pref[] = [];
+  const seen = new Set<string>();
+  for (const p of [...(work ?? []), ...(global ?? [])]) {
+    if (seen.has(p.text)) continue;
+    seen.add(p.text);
+    out.push(p);
+  }
+  return out;
+}
+/** 导出为可分享的 JSON（不含瞬时 hits 也可保留） */
+export function serializePrefs(prefs: Pref[]): string {
+  return JSON.stringify({ version: 1, prefs: prefs.map((p) => ({ text: p.text, on: p.on, from: p.from ?? 'user', scope: p.scope ?? 'work' })) }, null, 2);
+}
+/** 解析偏好 JSON；坏数据抛错 */
+export function parsePrefs(json: string): Pref[] {
+  const o = JSON.parse(json);
+  const arr = Array.isArray(o) ? o : o?.prefs;
+  if (!Array.isArray(arr)) throw new Error('不是有效的偏好文件（需要 { version, prefs }）');
+  const now = Date.now();
+  return arr.map((p: any, i: number) => {
+    const text = String(p?.text ?? '').trim();
+    if (!text) throw new Error(`第 ${i + 1} 条缺少文本`);
+    return { id: `imp${i}-${text.slice(0, 8)}`, text, on: p?.on !== false, from: (p?.from === 'revert' || p?.from === 'undoAll' ? p.from : 'user') as Pref['from'], at: now, scope: p?.scope === 'global' ? 'global' as const : 'work' as const, hits: 1 };
+  });
+}
+/** 把一批偏好并入已有列表（同句去重） */
+export function mergePrefs(list: Pref[] | undefined, incoming: Pref[], scope?: PrefScope): Pref[] {
+  let cur = list ?? [];
+  for (const p of incoming) cur = addPref(cur, p.text, p.from, p.id, p.at);
+  if (scope) cur = cur.map((p) => ({ ...p, scope: incoming.some((i) => i.text === p.text) ? scope : p.scope }));
+  return cur;
 }

@@ -3,9 +3,12 @@ node_modules/
 
 # Build outputs
 dist/
-build/
 out/
+release/
+dist-deliver/
 target/
+build/*
+!build/icon.ico
 *.tsbuildinfo
 *.jar
 
@@ -35,3 +38,11 @@ coverage/
 Thumbs.db
 *.swp
 .idea/
+
+# Local tour / packaging leftovers
+.logs/
+.shots/
+.shots-*/
+.shot-ud/
+.shot-real-ud/
+*.exe

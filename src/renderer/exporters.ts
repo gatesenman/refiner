@@ -1,5 +1,5 @@
 import { dump as yamlDump } from 'js-yaml';
-import { flatten, walk, toJSONCanvas, toMermaid } from '../core';
+import { flatten, walk, toJSONCanvas, toMermaid, toHtml, toMdTable, packFiles } from '../core';
 import type { Artifact, ArtNode, TypeManifest } from '../core';
 import { mindmapSVG } from './renderers/Mindmap';
 import { toDocx, bytesToBase64 } from './docx';
@@ -7,6 +7,7 @@ import { toDocx, bytesToBase64 } from './docx';
 export const EXPORTER_LABEL: Record<string, string> = {
   copy: '复制到剪贴板（Markdown）', docx: 'Word 文档 (.docx)', viewpng: '当前视图图片 (.png)',
   markdown: 'Markdown (.md)', json: 'JSON (.json)', csv: 'CSV 表格 (.csv)', yaml: 'YAML (.yaml)', opml: 'OPML 大纲 (.opml)', canvas: '白板 JSON Canvas (.canvas，Obsidian 等)', mermaid: 'Mermaid 图（甘特 / 脑图，.mmd）',
+  html: '网页 HTML（可离线打开、打印）', mdtable: 'Markdown 表格 (.md)', pack: '交接包（.zip，含 HTML/表格/白板/图）',
   svg: '脑图 SVG (.svg)', png: '脑图 PNG (.png)', images: '全部图片（文件夹）', text: '纯文本',
 };
 
@@ -76,7 +77,7 @@ function dataUrlToFile(url: string, name: string): { name: string; data: string;
 /** 导出菜单：常用的放前面（复制 / Word），再加模板声明的格式 */
 export function exportKinds(m: TypeManifest): string[] {
   const own = m.exporters ?? ['markdown', 'json'];
-  const base = m.output === 'tree' ? ['docx', 'copy', 'markdown', 'opml', 'canvas', 'mermaid', 'viewpng'] : ['docx', 'copy', 'viewpng'];
+  const base = m.output === 'tree' ? ['docx', 'copy', 'markdown', 'opml', 'canvas', 'mermaid', 'html', 'mdtable', 'pack', 'viewpng'] : ['docx', 'copy', 'viewpng'];
   return [...base, ...own].filter((k, i, arr) => arr.indexOf(k) === i);
 }
 
@@ -100,6 +101,15 @@ export async function runExport(kind: string, a: Artifact, m: TypeManifest, dark
     case 'opml': return window.api.saveFile(`${base}.opml`, toOPML(root));
     case 'canvas': return window.api.saveFile(`${base}.canvas`, JSON.stringify(toJSONCanvas(root, m), null, 2));
     case 'mermaid': return window.api.saveFile(`${base}.mmd`, toMermaid(root, m).text);
+    case 'html': return window.api.saveFile(`${base}.html`, toHtml(root, m, a));
+    case 'mdtable': return window.api.saveFile(`${base}-表格.md`, toMdTable(root, m));
+    case 'pack': {
+      const JSZip = ((await import('jszip')) as any).default ?? await import('jszip');
+      const zip = new JSZip();
+      for (const f of packFiles(a, m, toMarkdown(root, m), toCSV(root, m))) zip.file(f.name, f.text);
+      const buf: Uint8Array = await zip.generateAsync({ type: 'uint8array' });
+      return window.api.saveFile(`${base}-交接包.zip`, bytesToBase64(buf), 'base64');
+    }
     case 'yaml': return window.api.saveFile(`${base}.yaml`, m.output === 'text' ? (root.content ?? '') : yamlDump(stripData(root), { lineWidth: 120 }));
     case 'text': return window.api.saveFile(`${base}.${m.language === 'markdown' ? 'md' : 'txt'}`, root.content ?? '');
     case 'svg': return window.api.saveFile(`${base}.svg`, mindmapSVG(root, dark));

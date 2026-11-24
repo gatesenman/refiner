@@ -1,5 +1,6 @@
 import { stripWhys } from './reasons';
-import { prefBlock } from './prefs';
+import { prefBlock, effectivePrefs } from './prefs';
+import { surveyPrompt, parseSurvey, surveyBlock, type Survey } from './survey';
 import { DEFAULT_PIPELINE, DEFAULT_ROLES } from './roles';
 import { describeConstraints, effectiveFreedom, OP_DESC, OP_LABEL, OP_REGISTRY } from './freedom';
 import { getCheck } from './checks';
@@ -195,8 +196,36 @@ export async function runStage(req: RunRequest): Promise<RunResult> {
 
   const facts = (artifact.facts ?? []).filter((x) => x.a?.trim());
   const factBlock = facts.length ? `\n\n【固定事实】以下是用户确认过的事实，必须遵守，不要再猜：\n${facts.map((x) => `- ${x.q.replace(/[？?]\s*$/, '')}：${x.a}`).join('\n')}` : '';
-  const refBlock = factBlock + prefBlock(artifact.prefs) + (req.references?.trim() ? `\n\n【参考资料】以下是用户提供的参考资料，内容须与之保持一致、优先采用其中的事实与约束：\n${req.references.trim()}` : '');
+  let refBlock = factBlock + prefBlock(effectivePrefs(artifact.prefs, req.globalPrefs)) + surveyBlock(artifact.survey) + (req.references?.trim() ? `\n\n【参考资料】以下是用户提供的参考资料，内容须与之保持一致、优先采用其中的事实与约束：\n${req.references.trim()}` : '');
   const emit = (e: AgentLogEntry) => req.onLog?.({ ...e });
+  let surveyHeld: Survey | undefined = artifact.survey;
+  const wantSurvey = req.survey !== false && op === 'generate' && !isText && !oldRoot.children?.length && !artifact.survey;
+  if (wantSurvey) {
+    const entry: AgentLogEntry = { id: uid('log'), stepId: 'survey', role: 'planner', roleName: '多视角预写作', status: 'running', startedAt: Date.now() };
+    log.push(entry); emit(entry);
+    try {
+      const text = await providers.text.chat({
+        messages: [
+          { role: 'system' as const, content: '你只输出 JSON，不要解释。' + refBlock },
+          { role: 'user' as const, content: surveyPrompt(artifact.seed, vars.outline === '（空）' ? '' : String(vars.outline), req.references) },
+        ],
+        temperature: 0.4,
+        meta: { role: 'survey', op, stageId: stage.id, typeId: manifest.id, seed: artifact.seed },
+      }, (d) => req.onDelta?.('survey', d), req.signal);
+      entry.output = text;
+      const perspectives = parseSurvey(text);
+      surveyHeld = { perspectives, at: Date.now() };
+      refBlock += surveyBlock(surveyHeld);
+      entry.summary = perspectives.map((p) => p.name).join('、');
+      entry.status = 'done';
+    } catch (e: any) {
+      entry.status = 'skipped';
+      entry.summary = `预写作跳过：${String(e?.message ?? e).slice(0, 60)}`;
+      warnings.push('多视角预写作没有成功，已直接开始铺整体');
+    }
+    entry.endedAt = Date.now(); emit(entry);
+  }
+
   const sysEntry = (stepId: string, roleName: string, summary: string, status: AgentLogEntry['status'] = 'done') => {
     const e: AgentLogEntry = { id: uid('log'), stepId, role: 'guard', roleName, status, startedAt: Date.now(), endedAt: Date.now(), summary };
     log.push(e); emit(e);
@@ -434,7 +463,7 @@ export async function runStage(req: RunRequest): Promise<RunResult> {
     rounds: Object.values(results).find((x: any) => x?.rounds)?.rounds,
     ...(results.__questions ? { questions: results.__questions.slice(0, 3) } : {}), ...(keptNote ? { kept: keptNote } : {}), ...(results.__drift ? { drift: results.__drift } : {}), ...(results.__whys ? { whys: results.__whys } : {}),
   };
-  return { root: newRoot, log, warnings, version };
+  return { root: newRoot, log, warnings, version, ...(surveyHeld ? { survey: surveyHeld } : {}) };
 }
 
 /**

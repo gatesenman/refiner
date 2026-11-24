@@ -60,6 +60,8 @@ export interface Artifact {
   asks?: { id: string; q: string; options?: string[]; from?: string }[];
   /** 派生来源：以另一个作品为基础新建 */
   source?: { projectId: string; artifactId: string; title: string; versionId: string; refId?: string; dismissed?: string };
+  /** v2.2 第一次铺整体前的多视角备忘 */
+  survey?: import('./survey').Survey;
 }
 
 /* ───────────── 2. 版本树 ───────────── */
@@ -319,6 +321,10 @@ export interface RunRequest {
   onDelta?: (stepId: string, delta: string) => void;
   /** 参考资料（已按预算截断的文本），作为每个步骤的上下文 */
   references?: string;
+  /** 全局偏好（设置里），与作品偏好合并后注入提示词 */
+  globalPrefs?: import('./prefs').Pref[];
+  /** 是否做多视角预写作（默认：第一次铺整体且树为空时做） */
+  survey?: boolean;
   /** 多人设交叉设计时，本次运行所代表的人设 */
   persona?: { id: string; name: string; brief: string };
 }
@@ -328,4 +334,5 @@ export interface RunResult {
   log: AgentLogEntry[];
   warnings: string[];
   version: Version;
+  survey?: import('./survey').Survey;
 }

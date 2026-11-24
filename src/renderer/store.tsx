@@ -2,10 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   TypeRegistry, createArtifact as coreCreate, runStage, runFork, commitVersion, commitManual, rollback as coreRollback, uid, parseManifest,
   unpin as coreUnpin, DEFAULT_PERSONAS, planProcess, listRenderers, blueprintToTemplate, dumpManifest,
-  RunFailedError, runStageMulti, fillNumbers, extractOpenQuestions, toOutlineText, splitDetail, markReviewed, undo as coreUndo, redo as coreRedo, revertChange as coreRevert, keepChange as coreKeep, pendingReview,
-  headChanges, findNode, changeReasons, prefFromRevert, prefFromUndoAll, addPref,
+  RunFailedError, runStageMulti, runStageConfirming, fillNumbers, extractOpenQuestions, toOutlineText, splitDetail, markReviewed, undo as coreUndo, redo as coreRedo, revertChange as coreRevert, keepChange as coreKeep, pendingReview,
+  headChanges, findNode, changeReasons, prefFromRevert, prefFromUndoAll, addPref, effectivePrefs, serializePrefs, parsePrefs, mergePrefs, parseSurvey,
 } from '../core';
-import type { AgentLogEntry, Artifact, ArtNode, OpKind, TypeManifest, RunResult, PlanResult, Fact } from '../core';
+import type { AgentLogEntry, Artifact, ArtNode, OpKind, TypeManifest, RunResult, PlanResult, Fact, ConfirmAsk, ConfirmDecision } from '../core';
 import { changeStage, keepAndAdvance, skipStage, stepInfo, runEstimate, budgetBlock, priceTable, deriveAsks } from './flow';
 import { effectiveFreedom, costOf, addUsage, refContext, pickStartStage, type ImportResult, type RefItem } from '../core';
 import { buildProviders, createMeter, DEFAULT_SETTINGS, mergeSettings, type Settings } from './settings';
@@ -24,7 +24,7 @@ export interface PlanState { intent: string; templateId?: string; title?: string
   source?: Artifact['source'] }
 export interface TextSel { from: number; to: number; text: string }
 export interface RunFailure { message: string; detail?: string; raw?: string; kind: 'junk' | 'empty' | 'error' }
-export interface RunState { multi?: { i: number; n: number; title: string; done?: number; active?: string[]; par?: number }; running: boolean; artifactId?: string; log: AgentLogEntry[]; live: Record<string, string>; error?: string; warnings?: string[]; failure?: RunFailure; startedAt?: number; total?: number; lastOp?: { op: OpKind; instruction?: string; stageIndex?: number; targetIds?: string[] } }
+export interface RunState { multi?: { i: number; n: number; title: string; done?: number; active?: string[]; par?: number }; confirm?: ConfirmAsk; running: boolean; artifactId?: string; log: AgentLogEntry[]; live: Record<string, string>; error?: string; warnings?: string[]; failure?: RunFailure; startedAt?: number; total?: number; lastOp?: { op: OpKind; instruction?: string; stageIndex?: number; targetIds?: string[] } }
 export interface DialogSpec { title: string; body?: ReactNode; ok?: string; cancel?: string | null; danger?: boolean; resolve: (ok: boolean) => void }
 export interface Toast { id: string; kind: 'info' | 'error' | 'success'; text: string; action?: { label: string; fn: () => void } }
 
@@ -64,6 +64,7 @@ function useStoreImpl() {
   const [plan, setPlan] = useState<PlanState | null>(null);
   const planAbort = useRef<AbortController | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const confirmRef = useRef<{ resolve: (d: ConfirmDecision) => void } | null>(null);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
   const dirty = useRef(new Set<string>());
@@ -246,6 +247,8 @@ function useStoreImpl() {
         disabledSteps: disabledSteps[`${manifest.id}:${manifest.stages[stageIndex].id}`] ?? [],
         providers: buildProviders(settings, meter),
         references: refContext(art.refs).text,
+        globalPrefs: settingsRef.current.globalPrefs,
+        survey: settingsRef.current.survey !== false,
         signal: ctrl.signal,
         onLog: (e: AgentLogEntry) => setRun((r) => {
           const i = r.log.findIndex((x) => x.id === e.id);
@@ -267,27 +270,40 @@ function useStoreImpl() {
         toast(`${outs.length} 个人设方案已生成为兄弟分支，当前为最高分「${res.version.fork?.persona}」（可在版本树切换）`, 'success');
         return;
       }
-      res = multi
-        ? await runStageMulti(req, multi, (i, title, pr) => setRun((r) => ({ ...r, multi: { i, n: multi.length, title, done: pr?.done ?? i, active: pr?.active ?? [title], par: pr?.par ?? 1 } })), { concurrency: settingsRef.current.parallel ?? 3 })
-        : await runStage(req);
+      const onMulti = (i: number, title: string, pr?: { done: number; active: string[]; par: number }) => setRun((r) => ({ ...r, multi: { i, n: multi!.length, title, done: pr?.done ?? i, active: pr?.active ?? [title], par: pr?.par ?? 1 } }));
+      if (multi && settingsRef.current.confirmEach) {
+        res = await runStageConfirming(req, multi, async (info) => {
+          setRun((r) => ({ ...r, running: false, confirm: info, multi: { i: info.i, n: info.n, title: info.title, done: info.i, active: [], par: 1 } }));
+          const d = await new Promise<ConfirmDecision>((resolve) => { confirmRef.current = { resolve }; });
+          setRun((r) => ({ ...r, running: true, confirm: undefined, live: {} }));
+          return d;
+        }, onMulti, { concurrencyRest: settingsRef.current.parallel ?? 3 });
+      } else {
+        res = multi ? await runStageMulti(req, multi, onMulti, { concurrency: settingsRef.current.parallel ?? 3 }) : await runStage(req);
+      }
       redoStack.current[art.id] = [];
-      const ver = { ...res.version, usage: usageNow() };
+      const confirmed = !!(multi && settingsRef.current.confirmEach);
+      const ver = { ...res.version, usage: usageNow(), ...(confirmed ? { reviewed: true } : {}) };
       updateArtifact(proj.id, art.id, (a) => {
         // 步骤间追问：评审发现缺少只有用户知道的事实 → 下一步之前先问
         const asks = manifest.output === 'tree' ? deriveAsks(ver.summary, a.facts ?? []).map((q) => ({ id: uid('ask'), ...q, from: stage.name })) : [];
-        return chargeWork({ ...commitVersion(markReviewed(a), ver), stageIndex, ...(asks.length ? { asks } : {}) });
+        const survey = res.survey ?? (() => { const e = res.log.find((x) => x.stepId === 'survey' && x.status === 'done' && x.output); if (!e?.output) return undefined; try { return { perspectives: parseSurvey(e.output), at: Date.now() }; } catch { return undefined; } })();
+        return chargeWork({ ...commitVersion(markReviewed(a), ver), stageIndex, ...(asks.length ? { asks } : {}), ...(survey && !a.survey ? { survey } : {}) });
       });
-      setRun((r) => ({ ...r, running: false, warnings: res.warnings }));
+      setRun((r) => ({ ...r, running: false, confirm: undefined, warnings: res.warnings, log: res.log.length ? res.log : r.log }));
       setTextSel(undefined);
+      if (confirmed) toast(res.version.label, 'success');
+      const sv = res.survey ?? (() => { const e = (res.log ?? []).find((x) => x.stepId === 'survey' && x.output); if (!e?.output) return undefined; try { return { perspectives: parseSurvey(e.output), at: Date.now() }; } catch { return undefined; } })();
+      if (sv) updateArtifact(proj.id, art.id, (a) => (a.survey ? a : { ...a, survey: sv }));
     } catch (e: any) {
       // 失败/取消也计入已花费的用量
       if (meter.total().input) updateArtifact(proj.id, art.id, chargeWork);
       const log: AgentLogEntry[] | undefined = e?.log;
       if (e instanceof RunFailedError) {
-        setRun((r) => ({ ...r, running: false, log: log ?? r.log, failure: { message: e.message, raw: e.raw, kind: e.kind } }));
+        setRun((r) => ({ ...r, running: false, confirm: undefined, log: log ?? r.log, failure: { message: e.message, raw: e.raw, kind: e.kind } }));
       } else {
         const { message, detail } = splitDetail(String(e?.message ?? e));
-        if (message === '已取消') { setRun((r) => ({ ...r, running: false, log: log ?? r.log })); toast('已停止，内容保持原样', 'info'); }
+        if (message === '已取消') { setRun((r) => ({ ...r, running: false, confirm: undefined, log: log ?? r.log })); confirmRef.current = null; toast('已停止，内容保持原样', 'info'); }
         else setRun((r) => ({ ...r, running: false, log: log ?? r.log, error: message, failure: { message, detail, kind: 'error' } }));
       }
     } finally {
@@ -297,7 +313,8 @@ function useStoreImpl() {
 
   const runOpRef = useRef(runOp);
   runOpRef.current = runOp;
-  const cancelRun = useCallback(() => abortRef.current?.abort(), []);
+  const decideConfirm = useCallback((d: ConfirmDecision) => { confirmRef.current?.resolve(d); confirmRef.current = null; }, []);
+  const cancelRun = useCallback(() => { abortRef.current?.abort(); decideConfirm('stop'); }, [decideConfirm]);
 
   const createArtifactAction = useCallback((typeId: string, seed: string, opts: { title?: string; projectId?: string; autoRun?: boolean } = {}) => {
     const manifest = registryRef.current.get(typeId);
@@ -597,6 +614,27 @@ function useStoreImpl() {
   const togglePref = useCallback((id: string) => mutateCur((a) => ({ ...a, prefs: (a.prefs ?? []).map((p) => (p.id === id ? { ...p, on: !p.on } : p)) })), [mutateCur]);
   const removePref = useCallback((id: string) => mutateCur((a) => ({ ...a, prefs: (a.prefs ?? []).filter((p) => p.id !== id) })), [mutateCur]);
   const addUserPref = useCallback((t: string) => t.trim() && mutateCur((a) => ({ ...a, prefs: addPref(a.prefs, t.trim(), 'user', uid('pf')) })), [mutateCur]);
+  const promotePref = useCallback(async (id: string) => {
+    const a = curArt(); const p = a?.prefs?.find((x) => x.id === id); if (!p) return;
+    await saveSettings({ ...settingsRef.current, globalPrefs: addPref(settingsRef.current.globalPrefs, p.text, p.from, uid('gpf')) });
+    mutateCur((x) => ({ ...x, prefs: (x.prefs ?? []).map((q) => (q.id === id ? { ...q, scope: 'global' } : q)) }));
+    toast('已用于以后的所有作品', 'success');
+  }, [current, mutateCur, toast, saveSettings]); // eslint-disable-line
+  const demotePref = useCallback(async (id: string) => {
+    const a = curArt(); const p = a?.prefs?.find((x) => x.id === id);
+    const text = p?.text ?? settingsRef.current.globalPrefs?.find((x) => x.id === id)?.text;
+    if (!text) return;
+    await saveSettings({ ...settingsRef.current, globalPrefs: (settingsRef.current.globalPrefs ?? []).filter((x) => x.text !== text) });
+    mutateCur((x) => ({ ...x, prefs: (x.prefs ?? []).map((q) => (q.text === text ? { ...q, scope: 'work' } : q)) }));
+  }, [current, mutateCur, saveSettings]); // eslint-disable-line
+  const exportPrefsJson = useCallback(() => serializePrefs(effectivePrefs(curArt()?.prefs, settingsRef.current.globalPrefs).map((p) => ({ ...p, scope: settingsRef.current.globalPrefs?.some((g) => g.text === p.text) ? 'global' : 'work' }))), [current]); // eslint-disable-line
+  const importPrefsJson = useCallback(async (json: string, as: 'work' | 'global' = 'work') => {
+    const incoming = parsePrefs(json);
+    if (as === 'global') await saveSettings({ ...settingsRef.current, globalPrefs: mergePrefs(settingsRef.current.globalPrefs, incoming, 'global') });
+    else mutateCur((a) => ({ ...a, prefs: mergePrefs(a.prefs, incoming, 'work') }));
+    toast(`已导入 ${incoming.length} 条偏好`, 'success');
+  }, [current, mutateCur, toast, saveSettings]); // eslint-disable-line
+
   mutateCurRef.current = mutateCur;
   const removeFact = useCallback((id: string) => mutateCur((a) => ({ ...a, facts: (a.facts ?? []).filter((f) => f.id !== id) })), [mutateCur]);
   /** 以此为基础新建：上游全文作为参考资料，意图自动填写，新作品记录来源 */
@@ -640,13 +678,13 @@ function useStoreImpl() {
     exportOpen, setExportOpen, compare, setCompare, adoptPart,
     dialog, confirmDialog, saveTpl, setSaveTpl, helpOpen, setHelpOpen, savedAt, ensureDefaultProject, duplicateProjects,
     undo: undoAction, redo: redoAction, keepAndNext, skipStep, finishWork, keepAll, undoAll, revertOne, keepOne, dismissFailure, retryLast,
-    answerAsk, dismissAsks, addFact, removeFact, togglePref, removePref, addUserPref, deriveFrom, openSource, refreshFromSource, dismissSource, hlIds, setHlIds,
+    answerAsk, dismissAsks, addFact, removeFact, togglePref, removePref, addUserPref, promotePref, demotePref, exportPrefsJson, importPrefsJson, deriveFrom, openSource, refreshFromSource, dismissSource, hlIds, setHlIds,
     editingId, setEditingId, importStart, extractFiles, addRefs, removeRef, toggleRef, restoreBackup,
     plan, setPlan, planIntent, updateDraft, startFromBlueprint, saveAsTemplate, manifestFor,
     view, setView, current, currentProject, currentArtifact, currentManifest, openArtifact, deleteArtifact, renameArtifact,
     newProject, renameProject, deleteProject, createArtifact: createArtifactAction,
     selectedId, setSelectedId, textSel, setTextSel, rendererBy, setRendererBy,
-    disabledSteps, toggleStep, run, multiSel, toggleMulti, clearMulti, runOp, cancelRun, manualEdit, unpinNode, setStage, rollback, updateArtifact, crossDesign, setCrossDesign,
+    disabledSteps, toggleStep, run, multiSel, toggleMulti, clearMulti, runOp, cancelRun, decideConfirm, manualEdit, unpinNode, setStage, rollback, updateArtifact, crossDesign, setCrossDesign,
     toasts, toast, newDialog, setNewDialog, installType, deleteType, loadRegistry, designerSel, setDesignerSel,
   };
 }

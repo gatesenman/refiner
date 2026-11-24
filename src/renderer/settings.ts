@@ -21,6 +21,12 @@ export interface Settings {
   budget?: { perRun?: number; perWork?: number };
   /** v1.8 多处同时处理的并行数（1 = 依次处理） */
   parallel?: number;
+  /** v2.1 多处细化时逐处确认（每改完一处先问再继续） */
+  confirmEach?: boolean;
+  /** v2.2 第一次铺整体前先做多视角预写作（默认开） */
+  survey?: boolean;
+  /** v2.2 适用于所有作品的偏好 */
+  globalPrefs?: import('../core').Pref[];
   /** 自动备份保留份数 */
   backupKeep?: number;
   /** 自动更新地址（generic：放 latest.yml 的目录 URL） */

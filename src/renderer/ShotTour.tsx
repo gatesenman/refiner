@@ -1,5 +1,9 @@
 import { v17Tour, R17 } from './ShotTour17';
 import { v18Tour, R18 } from './ShotTour18';
+import { e2eTour, RE2E } from './ShotTourE2E';
+import { v21Tour, R21 } from './ShotTour21';
+import { v22Tour, R22 } from './ShotTour22';
+import { v23Tour, R23 } from './ShotTour23';
 import { useEffect, useRef } from 'react';
 import { useStore, type Store } from './store';
 import { DEFAULT_SETTINGS } from './settings';
@@ -71,8 +75,13 @@ export function ShotTour() {
         window.api.quit();
         return;
       }
+      if (tour === 'v23') { try { await v23Tour({ S, wait, shot, until, P }); } catch (e) { R23.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}v23.json`, JSON.stringify(R23, null, 2)); } window.api.quit(); return; }
+      if (tour === 'v22') { try { await v22Tour({ S, wait, shot, until, P }); } catch (e) { R22.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}v22.json`, JSON.stringify(R22, null, 2)); } window.api.quit(); return; }
+      if (tour === 'v21') { try { await v21Tour({ S, wait, shot, until, P }); } catch (e) { R21.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}v21.json`, JSON.stringify(R21, null, 2)); } window.api.quit(); return; }
+      if (tour === 'e2e') { try { await e2eTour({ S, wait, shot, until, P }); } catch (e) { RE2E.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}e2e.json`, JSON.stringify(RE2E, null, 2)); } window.api.quit(); return; }
       if (tour === 'v18') { try { await v18Tour({ S, wait, shot, until, P }); } catch (e) { R18.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}v18.json`, JSON.stringify(R18, null, 2)); } window.api.quit(); return; }
       if (tour === 'v17') { try { await v17Tour({ S, wait, shot, until, P }); } catch (e) { R17.errors.push(String((e as any)?.stack ?? e)); await window.api.write(`${P}v17.json`, JSON.stringify(R17, null, 2)); } window.api.quit(); return; }
+      if (tour === 'v16') { try { await v16Tour({ S, wait, shot, until, P }); } catch (e) { await window.api.write(`${P}v16-error.txt`, String((e as any)?.stack ?? e)); await window.api.write(`${P}v16.json`, JSON.stringify(R16, null, 2)); } window.api.quit(); return; }
       if (real) {
         await S().saveSettings({ ...DEFAULT_SETTINGS, demoMode: false, theme: 'dark', text: { baseUrl: real.baseUrl, apiKey: '', model: real.model, stream: true, maxTokens: 1500 } });
         S().newProject('真实模型验证');
@@ -88,7 +97,6 @@ export function ShotTour() {
         window.api.quit();
         return;
       }
-      if (tour === 'v16') { try { await v16Tour({ S, wait, shot, until, P }); } catch (e) { await window.api.write(`${P}v16-error.txt`, String((e as any)?.stack ?? e)); await window.api.write(`${P}v16.json`, JSON.stringify(R16, null, 2)); } window.api.quit(); return; }
       if (tour === 'reopen') {
         await wait(1200);
         await shot(`${P}18-重开应用-直接回到上次作品.png`, true);
