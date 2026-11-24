@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, safeStorage } 
 import { autoUpdater } from 'electron-updater';
 import { sealSettings, openSettings, type Cipher } from './secrets';
 import { createBackup, listBackups, restoreBackup, dailyBackupIfDue } from './backup';
+import { atomicWrite, loadJsonDir, loadJsonFile } from '../core/persist';
 import { join } from 'path';
 import { promises as fs, existsSync, mkdirSync } from 'fs';
 import { createOpenAIText, createOpenAIImage, createHttpVideo } from '../core/providers/openai';
@@ -99,11 +100,13 @@ function registerIpc() {
     real: process.env.REFINER_REAL_BASE ? { baseUrl: process.env.REFINER_REAL_BASE, model: process.env.REFINER_REAL_MODEL ?? '' } : null }));
 
   ipcMain.handle('settings:get', async () => {
-    let raw: any;
-    try { raw = JSON.parse(await fs.readFile(settingsFile(), 'utf8')); } catch { return null; }
+    const loaded = await loadJsonFile<any>(settingsFile());
+    if (!loaded.ok) return null;
+    if (loaded.recovered) console.warn('设置：', loaded.warning);
+    const raw: any = loaded.value;
     const r = openSettings(raw, cipher);
     // 迁移：旧版本明文保存的 Key，读到后立即加密回写
-    if (r.plaintextFound && cipher.available()) await fs.writeFile(settingsFile(), JSON.stringify(sealSettings(r.settings, cipher), null, 2), 'utf8').catch(() => {});
+    if (r.plaintextFound && cipher.available()) await atomicWrite(settingsFile(), JSON.stringify(sealSettings(r.settings, cipher), null, 2)).catch(() => {});
     keepN = Number(r.settings?.backupKeep) || 10;
     return r.settings;
   });
@@ -132,22 +135,18 @@ function registerIpc() {
   ipcMain.handle('update:check', async (_e, url: string) => checkUpdate(url));
   ipcMain.handle('win:zoom', (_e, f: number) => { win?.webContents.setZoomFactor(Math.max(0.6, Math.min(2, Number(f) || 1))); return true; });
   ipcMain.handle('update:install', () => { try { autoUpdater.quitAndInstall(); return true; } catch { return false; } });
-  ipcMain.handle('settings:set', async (_e, s) => { keepN = Number(s?.backupKeep) || 10; await fs.writeFile(settingsFile(), JSON.stringify(sealSettings(s, cipher), null, 2), 'utf8'); return true; });
+  ipcMain.handle('settings:set', async (_e, s) => { keepN = Number(s?.backupKeep) || 10; await atomicWrite(settingsFile(), JSON.stringify(sealSettings(s, cipher), null, 2)); return true; });
 
   ipcMain.handle('projects:loadAll', async () => {
     ensureDirs();
-    const files = (await fs.readdir(projDir())).filter((f) => f.endsWith('.json'));
-    const out: unknown[] = [];
-    for (const f of files) {
-      try { out.push(JSON.parse(await fs.readFile(join(projDir(), f), 'utf8'))); } catch (e) { console.error('坏的项目文件', f, e); }
-    }
-    return out;
+    const r = await loadJsonDir(projDir());
+    if (r.warnings.length) console.warn('加载项目：', r.warnings.join('；'));
+    return r.items;
   });
   ipcMain.handle('projects:save', async (_e, p: { id: string }) => {
     ensureDirs();
     const file = join(projDir(), safeName(p.id) + '.json');
-    await fs.writeFile(file + '.tmp', JSON.stringify(p), 'utf8');
-    await fs.rename(file + '.tmp', file);
+    await atomicWrite(file, JSON.stringify(p));
     return true;
   });
   ipcMain.handle('projects:delete', async (_e, id: string) => {
@@ -163,7 +162,7 @@ function registerIpc() {
   });
   ipcMain.handle('plugins:save', async (_e, id: string, text: string) => {
     ensureDirs();
-    await fs.writeFile(join(pluginDir(), safeName(id) + '.yaml'), text, 'utf8');
+    await atomicWrite(join(pluginDir(), safeName(id) + '.yaml'), text);
     return true;
   });
   ipcMain.handle('plugins:delete', async (_e, id: string) => {

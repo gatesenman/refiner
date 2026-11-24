@@ -55,7 +55,7 @@ export function RefsPanel() {
                 <div className="muted ref-s">{r.text.length.toLocaleString()} 字{r.off ? ' · 已停用' : t ? (t.kept ? ` · 只发送前 ${t.kept.toLocaleString()} 字（已截断）` : ' · 超出预算，本次不发送') : ''} · {r.text.slice(0, 60).replace(/\s+/g, ' ')}</div>
               </div>
               <label className="row muted" style={{ gap: 4, fontSize: 12 }}><input type="checkbox" checked={!r.off} onChange={() => s.toggleRef(r.id)} />使用</label>
-              <button className="icon-btn" title="移除" onClick={() => s.removeRef(r.id)}><Icon name="ri-delete-bin-6-line" /></button>
+              <button className="icon-btn" title="移除" aria-label="移除" onClick={() => s.removeRef(r.id)}><Icon name="ri-delete-bin-6-line" /></button>
             </div>
           );
         })}
@@ -118,7 +118,7 @@ function Facts() {
     <div className="facts">
       <div className="facts-h"><Icon name="ri-pushpin-line" /><b>固定事实</b><span className="muted">（你确认过的，AI 不会再猜：澄清时的回答、步骤之间的追问）</span></div>
       {fs.map((f) => (
-        <div key={f.id} className="fact"><span className="fq">{f.q.replace(/[？?]\s*$/, '').replace(/——能补充一下吗$/, '')}</span><span className="fa">{f.a}</span><span className="muted" style={{ fontSize: 11 }}>{f.from === 'clarify' ? '澄清' : f.from === 'review' ? '追问' : '手填'}</span><button className="icon-btn" title="移除" onClick={() => s.removeFact(f.id)}><Icon name="ri-close-line" /></button></div>
+        <div key={f.id} className="fact"><span className="fq">{f.q.replace(/[？?]\s*$/, '').replace(/——能补充一下吗$/, '')}</span><span className="fa">{f.a}</span><span className="muted" style={{ fontSize: 11 }}>{f.from === 'clarify' ? '澄清' : f.from === 'review' ? '追问' : '手填'}</span><button className="icon-btn" title="移除" aria-label="移除" onClick={() => s.removeFact(f.id)}><Icon name="ri-close-line" /></button></div>
       ))}
       <div className="row" style={{ gap: 6 }}>
         <input className="input" style={{ flex: 1 }} placeholder="事项，如：总预算" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -147,7 +147,7 @@ function Prefs() {
           <span className="muted" style={{ fontSize: 11 }}>{global ? '所有作品' : '仅本作品'} · {p.from === 'user' ? '手填' : p.from === 'undoAll' ? '整次撤回' : '撤回'}{(p.hits ?? 1) > 1 ? ` ×${p.hits}` : ''}</span>
           {!global ? <button className="btn sm ghost" title="以后的作品也遵守" onClick={() => s.promotePref(p.id)}>用于所有作品</button> : <button className="btn sm ghost" onClick={() => s.demotePref(p.id)}>仅本作品</button>}
           <button className="btn sm ghost" title={p.on ? '停用这条' : '重新启用'} onClick={() => s.togglePref(p.id)}>{p.on ? '停用' : '启用'}</button>
-          <button className="icon-btn" title="删除" onClick={() => s.removePref(p.id)}><Icon name="ri-close-line" /></button>
+          <button className="icon-btn" title="删除" aria-label="删除" onClick={() => s.removePref(p.id)}><Icon name="ri-close-line" /></button>
         </div>
         );
       })}

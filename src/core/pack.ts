@@ -5,8 +5,8 @@
  * - 交接包：多个开放格式打成一份清单，由渲染进程再打 zip
  */
 import type { ArtNode, Artifact, TypeManifest } from './types';
-import { walk } from './tree';
-import { toJSONCanvas, toMermaid } from './interop';
+import { walk, normalizeNode } from './tree';
+import { toJSONCanvas, toMermaid, fromJSONCanvas } from './interop';
 import { readiness, maturityMap } from './maturity';
 
 export interface PackFile { name: string; text: string }
@@ -85,4 +85,60 @@ export function packFiles(a: Artifact, m: TypeManifest, md?: string, csv?: strin
   if (csv) files.push({ name: 'table.csv', text: csv });
   files.push({ name: 'README.txt', text: `「${root.title}」交接包（由渐进 Refiner 导出）\n\n- overview.html  用浏览器打开即可阅读/打印\n- outline.md / table.md / table.csv  正文与表格\n- board.canvas  可导入 Obsidian 等白板\n- diagram.mmd  Mermaid 图（甘特或脑图）\n` });
   return files;
+}
+
+
+
+function parseOutlineMd(md: string): ArtNode {
+  const lines = md.replace(/\r\n/g, '\n').split('\n');
+  const root: ArtNode = { id: 'root', title: '导入', children: [] };
+  const stack: { d: number; n: ArtNode }[] = [{ d: 0, n: root }];
+  let pending = root;
+  for (const line of lines) {
+    const h = /^(#{1,6})\s+(.+)$/.exec(line);
+    if (h) {
+      const d = h[1].length;
+      const n: ArtNode = { id: '', title: h[2].trim(), children: [] };
+      while (stack.length && stack[stack.length - 1].d >= d) stack.pop();
+      const parent = stack[stack.length - 1]?.n ?? root;
+      parent.children = [...(parent.children ?? []), n];
+      stack.push({ d, n });
+      pending = n;
+      if (d === 1 && root.title === '导入' && !(root.children && root.children.length > 1)) {
+        // 第一级标题作为根，不要再套一层
+        root.title = n.title;
+        root.children = n.children ?? [];
+        pending = root;
+        stack.pop();
+        stack.push({ d, n: root });
+        continue;
+      }
+    } else if (line.trim() && pending) {
+      pending.content = (pending.content ? pending.content + '\n' : '') + line.trim();
+    }
+  }
+  return normalizeNode(root.title === '导入' && root.children?.length === 1 ? root.children[0] : root);
+}
+
+function parseMdTable(md: string): ArtNode {
+  // 退路：每个 ## 一节，表格行变子项
+  return parseOutlineMd(md.replace(/^\|\s*标题\s*\|.*$/gm, '').replace(/^\|\s*---.*$/gm, '').replace(/^\|\s*([^|]+)\s*\|\s*([^|]*)\|?/gm, '### $1\n$2'));
+}
+
+/** 从交接包内的文本文件还原树。优先 board.canvas，其次 outline.md / table.md。 */
+export function importPackFiles(files: { name: string; text: string }[]): { root: ArtNode; source: string; notes: string[] } {
+  const by = Object.fromEntries(files.map((f) => [f.name.replace(/^.*[/\\]/, '').toLowerCase(), f.text]));
+  const notes: string[] = [];
+  const canvas = by['board.canvas'];
+  if (canvas) {
+    try {
+      const doc = JSON.parse(canvas);
+      const root = fromJSONCanvas(doc);
+      if (!root.title && !root.children?.length) throw new Error('空');
+      return { root: normalizeNode(root), source: 'board.canvas', notes };
+    } catch (e: any) { notes.push(`白板解析失败：${String(e?.message ?? e).slice(0, 80)}，改试其他文件`); }
+  }
+  if (by['outline.md']?.trim()) return { root: parseOutlineMd(by['outline.md']), source: 'outline.md', notes };
+  if (by['table.md']?.trim()) return { root: parseMdTable(by['table.md']), source: 'table.md', notes };
+  throw new Error('交接包里没有可导入的 board.canvas / outline.md / table.md');
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { effectiveFreedom, freedomScore } from '../../core';
+import { effectiveFreedom, freedomScore, freedomRuntimeNote } from '../../core';
 import type { StageDef } from '../../core';
 import { Icon } from '../icons/Icon';
 
@@ -38,7 +38,7 @@ export function FreedomTrack({ stages, current, versions = [], onPick, compact }
           return <span key={k} className={`ftrack-ver ${v.head ? 'head' : ''}`} style={{ left: `calc(${x(scores[v.stageIndex] ?? 0)} + ${((c - 1) % 6) * 5 - 12}px)`, top: -6 - Math.floor((c - 1) / 6) * 5 }} title="版本" />;
         })}
         {stages.map((st, i) => (
-          <div key={st.id} className={`ftrack-cp ${i === current ? 'on' : ''} ${current != null && i < current ? 'past' : ''}`} style={{ left: x(scores[i]) }} onClick={(e) => { e.stopPropagation(); }} title={`${st.name}：自由度 ${scores[i]}`}>
+          <div key={st.id} className={`ftrack-cp ${i === current ? 'on' : ''} ${current != null && i < current ? 'past' : ''}`} style={{ left: x(scores[i]) }} onClick={(e) => { e.stopPropagation(); }} title={`${st.name}：自由度 ${scores[i]}。${freedomRuntimeNote(stages, i)}`}>
             <span className="dot" />
             <span className="nm">{st.name}</span>
             <span className="sc">{scores[i]}</span>
@@ -46,6 +46,7 @@ export function FreedomTrack({ stages, current, versions = [], onPick, compact }
         ))}
         {pos != null && <div className={`ftrack-handle ${drag != null ? 'drag' : ''}`} style={{ left: x(pos) }}><Icon name="ri-focus-3-line" /></div>}
       </div>
+      {!compact && current != null && <div className="ftrack-note muted" style={{ fontSize: 12, marginTop: 6 }}>{freedomRuntimeNote(stages, current)}</div>}
     </div>
   );
 }

@@ -74,7 +74,7 @@ export function BlueprintView() {
                     <span className="sstep-n" style={{ ['--h' as any]: m.stages.length > 1 ? i / (m.stages.length - 1) : 0 }}>{i + 1}</span>
                     <input className="sstep-name" value={st.name} onChange={(e) => setStages((a) => a.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
                     <input className="sstep-desc" value={st.description ?? ''} placeholder="这一步做什么（一句话）" onChange={(e) => setStages((a) => a.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} />
-                    {i > 0 && m.stages.length > 2 && <button className="icon-btn" title="删除这一步" onClick={() => setStages((a) => a.filter((_x, j) => j !== i))}><Icon name="ri-delete-bin-6-line" /></button>}
+                    {i > 0 && m.stages.length > 2 && <button className="icon-btn" title="删除这一步" aria-label="删除这一步" onClick={() => setStages((a) => a.filter((_x, j) => j !== i))}><Icon name="ri-delete-bin-6-line" /></button>}
                   </div>
                 ))}
                 <button className="btn sm ghost" style={{ marginTop: 4 }} onClick={() => setStages((a) => [...a, newStage(a, `第 ${a.length + 1} 步`)])}><Icon name="ri-add-line" />加一步</button>
@@ -145,7 +145,7 @@ export function BlueprintView() {
                     <td><select className="select" style={{ height: 24, padding: '0 4px', width: 88 }} value={st.freedom.strictness} onChange={(e) => setF(i, { strictness: e.target.value as Strictness })}>{(['loose', 'schema', 'strict'] as Strictness[]).map((x) => <option key={x} value={x}>{STRICT_LABEL[x]}</option>)}</select></td>
                     <td><input className="input" style={{ width: 54, height: 24, padding: '2px 6px' }} value={st.freedom.maxNewNodes ?? ''} placeholder="不限" onChange={(e) => setF(i, { maxNewNodes: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value) || 0) })} /></td>
                     <td><b>{freedomScore(effectiveFreedom(m.stages, i))}</b></td>
-                    <td>{i > 0 && <button className="icon-btn" title="删除检查点" onClick={() => setStages((a) => a.filter((_x, j) => j !== i))}><Icon name="ri-delete-bin-6-line" /></button>}</td>
+                    <td>{i > 0 && <button className="icon-btn" title="删除检查点" aria-label="删除检查点" onClick={() => setStages((a) => a.filter((_x, j) => j !== i))}><Icon name="ri-delete-bin-6-line" /></button>}</td>
                   </tr>
                 ))}
               </tbody>

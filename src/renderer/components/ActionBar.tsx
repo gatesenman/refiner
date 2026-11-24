@@ -126,7 +126,7 @@ export function ActionBar({ onToggleLog, logOpen }: { onToggleLog: () => void; l
             <div className="ab-review">
               <Icon name="ri-sparkling-2-line" className="ok-ic" />
               <span className="ab-t">{bm.target}</span>
-              {!!bm.changes && bm.changes > 1 && <span className="ab-nav"><button className="icon-btn" title="上一处（K）" onClick={() => jump(-1)}><Icon name="ri-arrow-left-s-line" /></button>{ci + 1}/{bm.changes}<button className="icon-btn" title="下一处（J）" onClick={() => jump(1)}><Icon name="ri-arrow-right-s-line" /></button></span>}
+              {!!bm.changes && bm.changes > 1 && <span className="ab-nav"><button className="icon-btn" title="上一处（K）" aria-label="上一处（K）" onClick={() => jump(-1)}><Icon name="ri-arrow-left-s-line" /></button>{ci + 1}/{bm.changes}<button className="icon-btn" title="下一处（J）" aria-label="下一处（J）" onClick={() => jump(1)}><Icon name="ri-arrow-right-s-line" /></button></span>}
               {!!issues.length && <button className="btn ghost sm link-btn" onClick={(e) => { e.stopPropagation(); setWhy(!why); }}><Icon name="ri-chat-quote-line" />为什么这样改？</button>}
               {why && <div className="ab-pop" onClick={(e) => e.stopPropagation()}><b>AI 检查时发现：</b><ul>{issues.map((x, i) => <li key={i}>{x}</li>)}</ul><div className="hint">所以做了这些修改。改动处带「新」「改」标记，悬停可看改前内容。</div></div>}
             </div>
@@ -150,8 +150,8 @@ export function ActionBar({ onToggleLog, logOpen }: { onToggleLog: () => void; l
                   )}
                 </span>
               ) : <span className={`ab-t ${selName ? 'set' : ''}`}><Icon name={bm.mode === 'finished' ? 'ri-checkbox-circle-fill' : bm.mode === 'failed' ? 'ri-error-warning-line' : 'ri-focus-3-line'} />{bm.target}</span>}
-              {s.multiSel.length >= 2 && <button className="icon-btn" title="清除多选" onClick={() => s.clearMulti()}><Icon name="ri-close-line" /></button>}
-              {selName && s.multiSel.length < 2 && <button className="icon-btn" title="取消选中（改为全部）" onClick={() => s.setSelectedId(undefined)}><Icon name="ri-close-line" /></button>}
+              {s.multiSel.length >= 2 && <button className="icon-btn" title="清除多选" aria-label="清除多选" onClick={() => s.clearMulti()}><Icon name="ri-close-line" /></button>}
+              {selName && s.multiSel.length < 2 && <button className="icon-btn" title="取消选中（改为全部）" aria-label="取消选中（改为全部）" onClick={() => s.setSelectedId(undefined)}><Icon name="ri-close-line" /></button>}
               {bm.hint && (!selName || s.multiSel.length >= 2) && <span className="hint ab-hint">{bm.hint}</span>}
             </div>
           )}

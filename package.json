@@ -1,7 +1,7 @@
 {
   "name": "jianjin-refiner",
   "productName": "渐进 Refiner",
-  "version": "2.3.0",
+  "version": "2.13.0",
   "description": "通用渐进式精化引擎桌面应用：粗略生成 → 细化 → 调整",
   "author": "GAOSICHUN",
   "main": "out/main/main.js",

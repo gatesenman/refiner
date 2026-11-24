@@ -40,7 +40,7 @@ export function DraftSide() {
         <span className="muted">{items.length}</span>
         <span className="spacer" />
         <span className="hint">{[adds ? `新 ${adds}` : '', mods ? `改 ${mods}` : '', dels ? `删 ${dels}` : ''].filter(Boolean).join(' · ')}</span>
-        <button className="icon-btn" title={open ? '收起' : '展开'} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}><Icon name={open ? 'ri-arrow-right-s-line' : 'ri-arrow-left-s-line'} /></button>
+        <button className="icon-btn" title={open ? '收起' : '展开'} aria-label={open ? '收起' : '展开'} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}><Icon name={open ? 'ri-arrow-right-s-line' : 'ri-arrow-left-s-line'} /></button>
       </div>
       {open && (
         <div className="draft-body">
@@ -110,7 +110,7 @@ export function SurveyCard() {
         <b>多视角备忘</b>
         <span className="muted">铺整体前，执行者 / 审查者 / 使用者先看过一遍</span>
         <span className="spacer" />
-        <button className="icon-btn" title="收起" onClick={() => setOpen(false)}><Icon name="ri-close-line" /></button>
+        <button className="icon-btn" title="收起" aria-label="收起" onClick={() => setOpen(false)}><Icon name="ri-close-line" /></button>
       </div>
       <div className="survey-body">
         {sv.perspectives.map((p) => (

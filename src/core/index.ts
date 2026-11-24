@@ -27,3 +27,6 @@ export * from './draft';
 export * from './confirm';
 export * from './survey';
 export * from './pack';
+export * from './journal';
+export * from './merge';
+export * from './notices';

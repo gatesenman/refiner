@@ -103,9 +103,9 @@ export function TreeView(P: RProps) {
             {depth > 0 && P.changes?.has(n.id) && P.review?.whyOf?.(n.id) && <div className="chg-why"><Icon name="ri-chat-quote-line" />{P.review.whyOf(n.id)}</div>}
           </div>
           <div className="ohover">
-            <button className="icon-btn" title="添加子项" onClick={(e) => { e.stopPropagation(); const c = { id: uid(), title: '' }; onChange(addChild(root, n.id, c), `在「${short(n.title)}」下添加子项`); setCollapsed((x) => { const y = new Set(x); y.delete(n.id); return y; }); onSelect(c.id); setEditing(c.id); }}><Icon name="ri-add-line" /></button>
-            <button className="icon-btn" title={n.locked ? '解锁' : '锁定（后续阶段不可修改）'} onClick={(e) => { e.stopPropagation(); onChange(updateNode(root, n.id, { locked: !n.locked }), `${n.locked ? '解锁' : '锁定'}「${short(n.title)}」`); }}><Icon name={n.locked ? 'ri-lock-unlock-line' : 'ri-lock-line'} /></button>
-            {depth > 0 && <button className="icon-btn" title="删除（Delete）" onClick={(e) => { e.stopPropagation(); onChange(removeNode(root, n.id), `删除「${short(n.title)}」`); if (sel === n.id) onSelect(undefined); }}><Icon name="ri-delete-bin-6-line" /></button>}
+            <button className="icon-btn" title="添加子项" aria-label="添加子项" onClick={(e) => { e.stopPropagation(); const c = { id: uid(), title: '' }; onChange(addChild(root, n.id, c), `在「${short(n.title)}」下添加子项`); setCollapsed((x) => { const y = new Set(x); y.delete(n.id); return y; }); onSelect(c.id); setEditing(c.id); }}><Icon name="ri-add-line" /></button>
+            <button className="icon-btn" title={n.locked ? '解锁' : '锁定（后续阶段不可修改）'} aria-label={n.locked ? '解锁' : '锁定（后续阶段不可修改）'} onClick={(e) => { e.stopPropagation(); onChange(updateNode(root, n.id, { locked: !n.locked }), `${n.locked ? '解锁' : '锁定'}「${short(n.title)}」`); }}><Icon name={n.locked ? 'ri-lock-unlock-line' : 'ri-lock-line'} /></button>
+            {depth > 0 && <button className="icon-btn" title="删除（Delete）" aria-label="删除（Delete）" onClick={(e) => { e.stopPropagation(); onChange(removeNode(root, n.id), `删除「${short(n.title)}」`); if (sel === n.id) onSelect(undefined); }}><Icon name="ri-delete-bin-6-line" /></button>}
           </div>
         </div>
         {!isCol && kids.map((c, i) => renderNode(c, depth + 1, depth === 0 ? `${i + 1}` : `${num}.${i + 1}`))}

@@ -3,7 +3,7 @@ import {
   TypeRegistry, createArtifact as coreCreate, runStage, runFork, commitVersion, commitManual, rollback as coreRollback, uid, parseManifest,
   unpin as coreUnpin, DEFAULT_PERSONAS, planProcess, listRenderers, blueprintToTemplate, dumpManifest,
   RunFailedError, runStageMulti, runStageConfirming, fillNumbers, extractOpenQuestions, toOutlineText, splitDetail, markReviewed, undo as coreUndo, redo as coreRedo, revertChange as coreRevert, keepChange as coreKeep, pendingReview,
-  headChanges, findNode, changeReasons, prefFromRevert, prefFromUndoAll, addPref, effectivePrefs, serializePrefs, parsePrefs, mergePrefs, parseSurvey,
+  headChanges, findNode, changeReasons, prefFromRevert, prefFromUndoAll, addPref, effectivePrefs, serializePrefs, parsePrefs, mergePrefs, parseSurvey, applyCheckpoint, discardCheckpoint, hasPendingCheckpoint, mergeTrees, mergeSummary,
 } from '../core';
 import type { AgentLogEntry, Artifact, ArtNode, OpKind, TypeManifest, RunResult, PlanResult, Fact, ConfirmAsk, ConfirmDecision } from '../core';
 import { changeStage, keepAndAdvance, skipStage, stepInfo, runEstimate, budgetBlock, priceTable, deriveAsks } from './flow';
@@ -250,6 +250,7 @@ function useStoreImpl() {
         globalPrefs: settingsRef.current.globalPrefs,
         survey: settingsRef.current.survey !== false,
         signal: ctrl.signal,
+        onCheckpoint: (cp: import('../core').RunCheckpoint) => updateArtifact(proj.id, art.id, (a) => ({ ...a, runJournal: cp })),
         onLog: (e: AgentLogEntry) => setRun((r) => {
           const i = r.log.findIndex((x) => x.id === e.id);
           const log = i >= 0 ? r.log.map((x, j) => (j === i ? e : x)) : [...r.log, e];
@@ -288,7 +289,7 @@ function useStoreImpl() {
         // 步骤间追问：评审发现缺少只有用户知道的事实 → 下一步之前先问
         const asks = manifest.output === 'tree' ? deriveAsks(ver.summary, a.facts ?? []).map((q) => ({ id: uid('ask'), ...q, from: stage.name })) : [];
         const survey = res.survey ?? (() => { const e = res.log.find((x) => x.stepId === 'survey' && x.status === 'done' && x.output); if (!e?.output) return undefined; try { return { perspectives: parseSurvey(e.output), at: Date.now() }; } catch { return undefined; } })();
-        return chargeWork({ ...commitVersion(markReviewed(a), ver), stageIndex, ...(asks.length ? { asks } : {}), ...(survey && !a.survey ? { survey } : {}) });
+        return chargeWork({ ...commitVersion(markReviewed(a), ver), stageIndex, runJournal: undefined, ...(asks.length ? { asks } : {}), ...(survey && !a.survey ? { survey } : {}) });
       });
       setRun((r) => ({ ...r, running: false, confirm: undefined, warnings: res.warnings, log: res.log.length ? res.log : r.log }));
       setTextSel(undefined);
@@ -656,6 +657,29 @@ function useStoreImpl() {
     mutateCur((x) => ({ ...x, refs: (x.refs ?? []).some((r) => r.id === x.source!.refId) ? (x.refs ?? []).map((r) => (r.id === x.source!.refId ? { ...r, text, addedAt: Date.now() } : r)) : [...(x.refs ?? []), { id: x.source!.refId ?? uid('ref'), name: `来自「${up.title}」`, kind: 'text' as const, text, addedAt: Date.now() }], source: { ...x.source!, versionId: up.head, dismissed: undefined } }));
     toast(`已用「${up.title}」的最新内容更新参考资料；之后的步骤会按新内容来`, 'success');
   }, [current, mutateCur, toast]); // eslint-disable-line
+  const mergeFromSource = useCallback(() => {
+    const a = curArt(); if (!a?.source) return;
+    const up = projectsRef.current.find((p) => p.id === a.source!.projectId)?.artifacts.find((x) => x.id === a.source!.artifactId);
+    if (!up) return;
+    const base = up.versions.find((v) => v.id === a.source!.versionId)?.root ?? up.versions[0]?.root ?? up.root;
+    const merged = mergeTrees(base, a.root, up.root);
+    const text = `${up.title}\n${toOutlineText(up.root, { props: true })}`;
+    mutateCur((x) => {
+      const refs = (x.refs ?? []).some((r) => r.id === x.source!.refId) ? (x.refs ?? []).map((r) => (r.id === x.source!.refId ? { ...r, text, addedAt: Date.now() } : r)) : [...(x.refs ?? []), { id: x.source!.refId ?? uid('ref'), name: `来自「${up.title}」`, kind: 'text' as const, text, addedAt: Date.now() }];
+      const next = { ...x, refs, source: { ...x.source!, versionId: up.head, dismissed: undefined } };
+      if (JSON.stringify(merged.root) === JSON.stringify(x.root)) return next;
+      return commitVersion({ ...next, root: x.root }, { id: uid('v'), parentId: x.head, stageId: x.versions.find((v) => v.id === x.head)?.stageId ?? '', op: 'manual', label: '合并上游改动', root: merged.root, log: [], createdAt: Date.now() });
+    });
+    toast(mergeSummary(merged) + '参考资料也已更新。', merged.conflicts.length ? 'info' : 'success');
+  }, [current, mutateCur, toast]); // eslint-disable-line
+    const applyRunJournal = useCallback(() => {
+    if (!current) return;
+    updateArtifact(current.projectId, current.artifactId, (a) => applyCheckpoint(a));
+  }, [current, updateArtifact]);
+  const discardRunJournal = useCallback(() => {
+    if (!current) return;
+    updateArtifact(current.projectId, current.artifactId, (a) => discardCheckpoint(a));
+  }, [current, updateArtifact]);
   const dismissSource = useCallback(() => { const a = curArt(); if (!a?.source) return; const up = projectsRef.current.find((p) => p.id === a.source!.projectId)?.artifacts.find((x) => x.id === a.source!.artifactId); mutateCur((x) => ({ ...x, source: { ...x.source!, dismissed: up?.head } })); }, [current, mutateCur]); // eslint-disable-line
   const [hlIds, setHlIds] = useState<string[]>([]);
 
@@ -678,7 +702,7 @@ function useStoreImpl() {
     exportOpen, setExportOpen, compare, setCompare, adoptPart,
     dialog, confirmDialog, saveTpl, setSaveTpl, helpOpen, setHelpOpen, savedAt, ensureDefaultProject, duplicateProjects,
     undo: undoAction, redo: redoAction, keepAndNext, skipStep, finishWork, keepAll, undoAll, revertOne, keepOne, dismissFailure, retryLast,
-    answerAsk, dismissAsks, addFact, removeFact, togglePref, removePref, addUserPref, promotePref, demotePref, exportPrefsJson, importPrefsJson, deriveFrom, openSource, refreshFromSource, dismissSource, hlIds, setHlIds,
+    answerAsk, dismissAsks, addFact, removeFact, togglePref, removePref, addUserPref, promotePref, demotePref, exportPrefsJson, importPrefsJson, deriveFrom, openSource, refreshFromSource, mergeFromSource, dismissSource, applyRunJournal, discardRunJournal, hasPendingCheckpoint, hlIds, setHlIds,
     editingId, setEditingId, importStart, extractFiles, addRefs, removeRef, toggleRef, restoreBackup,
     plan, setPlan, planIntent, updateDraft, startFromBlueprint, saveAsTemplate, manifestFor,
     view, setView, current, currentProject, currentArtifact, currentManifest, openArtifact, deleteArtifact, renameArtifact,

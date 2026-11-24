@@ -6,7 +6,7 @@ import { versionTreeRows, OP_LABEL, fmtTokens, fmtCost, resolveRoles, headChange
 import { ActionBar } from '../components/ActionBar';
 import { ChangeList } from '../components/Compare';
 import { RefsPanel, LivePreview, UsageChip } from './WorkExtras';
-import { ReadyChip, RoughStrip, AskCard, SourceLink, SourceBanner, Handoff, DeriveRow } from './V17';
+import { ReadyChip, RoughStrip, AskCard, SourceLink, SourceBanner, RecoveryBanner, Handoff, DeriveRow } from './V17';
 import { DraftSide, ConfirmCard, SurveyCard } from '../components/DraftSide';
 import { changeMap } from '../../core';
 import { useEscClose } from '../esc';
@@ -207,16 +207,17 @@ function Banners() {
           </div>
           <button className="btn sm" onClick={() => s.setView('settings')}><Icon name="ri-exchange-line" />换个模型</button>
           {(f.raw || f.detail) && <button className="btn sm ghost" onClick={() => setRaw(!raw)}>{raw ? '收起' : f.raw ? '查看原始回复' : '详情'}</button>}
-          <button className="icon-btn" title="关闭" onClick={s.dismissFailure}><Icon name="ri-close-line" /></button>
+          <button className="icon-btn" title="关闭" aria-label="关闭" onClick={s.dismissFailure}><Icon name="ri-close-line" /></button>
         </div>
       )}
       <SourceBanner />
+      <RecoveryBanner />
       {s.settings.demoMode && !s.settings.demoNoticeSeen && (
         <div className="banner demo">
           <Icon name="ri-flask-line" />
           <span style={{ flex: 1 }}>{sample ? '演示样例：这是预先写好的示例内容，用来展示怎样一步步推进。配置模型后会生成真实内容。' : '演示模式：这是示例内容，不代表 AI 真实水平。配置模型后会生成真实内容。'}</span>
           <button className="btn sm ghost" onClick={() => s.setView('settings')}>配置模型</button>
-          <button className="icon-btn" title="知道了，不再显示" onClick={() => s.saveSettings({ ...s.settings, demoNoticeSeen: true })}><Icon name="ri-close-line" /></button>
+          <button className="icon-btn" title="知道了，不再显示" aria-label="知道了，不再显示" onClick={() => s.saveSettings({ ...s.settings, demoNoticeSeen: true })}><Icon name="ri-close-line" /></button>
         </div>
       )}
     </div>
@@ -232,7 +233,7 @@ function FinishCard() {
   useEffect(() => { document.querySelector('.canvas')?.scrollTo({ top: 0 }); }, []);
   return (
     <div className="finish-card">
-      <div className="fc-h"><Icon name="ri-checkbox-circle-fill" size={22} /><b>全部 {m.stages.length} 步已完成</b><span className="spacer" /><button className="icon-btn" title="关闭，回到内容" onClick={() => s.finishWork(false)}><Icon name="ri-close-line" /></button></div>
+      <div className="fc-h"><Icon name="ri-checkbox-circle-fill" size={22} /><b>全部 {m.stages.length} 步已完成</b><span className="spacer" /><button className="icon-btn" title="关闭，回到内容" aria-label="关闭，回到内容" onClick={() => s.finishWork(false)}><Icon name="ri-close-line" /></button></div>
       <div className="fc-s">{a.title} · {st.parts} 个部分、{st.items} 项 · 用时 {st.minutes} 分钟 · {st.versions} 个版本</div>
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn primary lg" onClick={() => doExport('docx')}><Icon name="ri-file-word-line" />导出为 Word</button>
@@ -304,8 +305,8 @@ export function ArtifactView() {
         <SourceLink />
         {expert && <span className="chip" title={`意图：${a.seed}`}>{a.blueprint ? <Icon name="ri-route-line" /> : <Icon name="ri-bookmark-line" />}{m.name}</span>}
         <span className="spacer" />
-        <button className="icon-btn" title="撤销（Ctrl+Z）" disabled={s.run.running} onClick={() => s.undo()}><Icon name="ri-arrow-go-back-line" /></button>
-        <button className="icon-btn" title="重做（Ctrl+Shift+Z）" disabled={s.run.running} onClick={() => s.redo()}><Icon name="ri-arrow-go-forward-line" /></button>
+        <button className="icon-btn" title="撤销（Ctrl+Z）" aria-label="撤销（Ctrl+Z）" disabled={s.run.running} onClick={() => s.undo()}><Icon name="ri-arrow-go-back-line" /></button>
+        <button className="icon-btn" title="重做（Ctrl+Shift+Z）" aria-label="重做（Ctrl+Shift+Z）" disabled={s.run.running} onClick={() => s.redo()}><Icon name="ri-arrow-go-forward-line" /></button>
         <button className={`btn sm ghost ${dock === 'versions' ? 'on' : ''}`} title="所有版本，可回到任一版本" onClick={() => setDock(dock === 'versions' ? null : 'versions')}><Icon name="ri-history-line" />历史<span className="muted">{a.versions.length}</span></button>
         <UsageChip />
         <button className={`btn sm ghost ${dock === 'refs' ? 'on' : ''}`} title="参考资料：每一步都会参考" onClick={() => setDock(dock === 'refs' ? null : 'refs')}><Icon name="ri-book-2-line" />资料{a.refs?.length ? <span className="muted">{a.refs.length}</span> : null}</button>
@@ -346,7 +347,7 @@ export function ArtifactView() {
               <div className={`tab ${dock === 'versions' ? 'on' : ''}`} onClick={() => setDock('versions')}><Icon name="ri-git-branch-line" /> {expert ? '版本树' : '历史'} <span className="muted">{a.versions.length}</span></div>
               <div className={`tab ${dock === 'refs' ? 'on' : ''}`} onClick={() => setDock('refs')}><Icon name="ri-book-2-line" /> 参考资料 <span className="muted">{a.refs?.length ?? 0}</span></div>
               <span className="spacer" />
-              <button className="icon-btn" style={{ alignSelf: 'center' }} onClick={() => setDock(null)} title="收起"><Icon name="ri-arrow-down-s-line" /></button>
+              <button className="icon-btn" style={{ alignSelf: 'center' }} title="收起" aria-label="收起" onClick={() => setDock(null)}><Icon name="ri-arrow-down-s-line" /></button>
             </div>
             <div className="dock-body">{dock === 'log' ? <AgentLog /> : dock === 'refs' ? <RefsPanel /> : <Versions />}</div>
           </div>

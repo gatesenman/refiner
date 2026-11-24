@@ -137,9 +137,9 @@ export function MindmapView({ root, sel, onSelect }: RProps) {
         </g>
       </svg>
       <div className="mm-tools">
-        <button className="icon-btn" title="放大" onClick={() => setT((s) => ({ ...s, k: Math.min(3, s.k * 1.2) }))}><Icon name="ri-zoom-in-line" /></button>
-        <button className="icon-btn" title="缩小" onClick={() => setT((s) => ({ ...s, k: Math.max(0.2, s.k / 1.2) }))}><Icon name="ri-zoom-out-line" /></button>
-        <button className="icon-btn" title="适应窗口" onClick={fit}><Icon name="ri-fullscreen-line" /></button>
+        <button className="icon-btn" title="放大" aria-label="放大" onClick={() => setT((s) => ({ ...s, k: Math.min(3, s.k * 1.2) }))}><Icon name="ri-zoom-in-line" /></button>
+        <button className="icon-btn" title="缩小" aria-label="缩小" onClick={() => setT((s) => ({ ...s, k: Math.max(0.2, s.k / 1.2) }))}><Icon name="ri-zoom-out-line" /></button>
+        <button className="icon-btn" title="适应窗口" aria-label="适应窗口" onClick={fit}><Icon name="ri-fullscreen-line" /></button>
         <span className="muted" style={{ fontSize: 11, alignSelf: 'center', padding: '0 6px' }}>{Math.round(t.k * 100)}%</span>
       </div>
     </div>

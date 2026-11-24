@@ -20,9 +20,9 @@ export function TitleBar() {
       <label className="expert-toggle" title="专家模式：显示自由度、算子、智能体流水线等引擎细节">
         <button className={`switch ${st.expert ? 'on' : ''}`} onClick={() => s.saveSettings({ ...st, expert: !st.expert })} /><span>专家模式</span>
       </label>
-      <button className="icon-btn" title="快捷键（?）" onClick={() => s.setHelpOpen(true)}><Icon name="ri-keyboard-line" /></button>
-      <button className="icon-btn" title="切换明暗主题" onClick={() => s.saveSettings({ ...st, theme: st.theme === 'dark' ? 'light' : 'dark' })}><Icon name={st.theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'} /></button>
-      <button className="icon-btn" title="设置" onClick={() => s.setView('settings')}><Icon name="ri-settings-3-line" /></button>
+      <button className="icon-btn" title="快捷键（?）" aria-label="快捷键（?）" onClick={() => s.setHelpOpen(true)}><Icon name="ri-keyboard-line" /></button>
+      <button className="icon-btn" title="切换明暗主题" aria-label="切换明暗主题" onClick={() => s.saveSettings({ ...st, theme: st.theme === 'dark' ? 'light' : 'dark' })}><Icon name={st.theme === 'dark' ? 'ri-sun-line' : 'ri-moon-line'} /></button>
+      <button className="icon-btn" title="设置" aria-label="设置" onClick={() => s.setView('settings')}><Icon name="ri-settings-3-line" /></button>
     </div>
   );
 }
@@ -46,7 +46,7 @@ export function Sidebar() {
         <div className={`side-item ${s.view === 'templates' ? 'active' : ''}`} onClick={() => s.setView('templates')}>
           <span className="ico"><Icon name="ri-layout-grid-line" /></span><span className="lbl">模板库</span><span className="meta">{nTpl}</span>
         </div>
-        <div className="side-h" style={{ marginTop: 12 }}><span>我的项目</span><button className="icon-btn" title="新建项目" onClick={() => { const p = s.newProject('新项目'); setRenaming(p.id); }}><Icon name="ri-add-line" /></button></div>
+        <div className="side-h" style={{ marginTop: 12 }}><span>我的项目</span><button className="icon-btn" title="新建项目" aria-label="新建项目" onClick={() => { const p = s.newProject('新项目'); setRenaming(p.id); }}><Icon name="ri-add-line" /></button></div>
         {!s.projects.length && <div className="hint" style={{ padding: '4px 16px' }}>还没有项目。在「新建」里描述你想做的事。</div>}
         {s.projects.map((p) => {
           const isOpen = open[p.id] ?? true;
@@ -60,7 +60,7 @@ export function Sidebar() {
                     onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
                 ) : <span className="lbl"><Icon name={isOpen ? 'ri-folder-open-line' : 'ri-folder-3-line'} className="muted" /> {p.name}</span>}
                 <span className="meta">{p.artifacts.length}</span>
-                <span className="act"><button className="icon-btn" title="删除项目" onClick={async (e) => { e.stopPropagation(); if (await s.confirmDialog({ title: `删除项目「${p.name}」？`, body: `其中的 ${p.artifacts.length} 份作品会一起删除。删除后 10 秒内可以撤销。`, ok: '删除', danger: true })) s.deleteProject(p.id); }}><Icon name="ri-delete-bin-6-line" /></button></span>
+                <span className="act"><button className="icon-btn" title="删除项目" aria-label="删除项目" onClick={async (e) => { e.stopPropagation(); if (await s.confirmDialog({ title: `删除项目「${p.name}」？`, body: `其中的 ${p.artifacts.length} 份作品会一起删除。删除后 10 秒内可以撤销。`, ok: '删除', danger: true })) s.deleteProject(p.id); }}><Icon name="ri-delete-bin-6-line" /></button></span>
               </div>
               {isOpen && p.artifacts.map((a) => {
                 const m = s.manifestFor(a);
@@ -69,7 +69,7 @@ export function Sidebar() {
                   <div key={a.id} className={`side-item child ${active ? 'active' : ''}`} onClick={() => s.openArtifact(p.id, a.id)} title={a.seed}>
                     <span className="ico"><Icon name={m?.icon} fallback="ri-question-line" /></span><span className="lbl">{a.title}</span>
                     <span className="meta" title={m?.stages[a.stageIndex]?.name}>{a.finishedAt ? <Icon name="ri-check-double-line" /> : `${a.stageIndex + 1}/${m?.stages.length ?? '?'}`}</span>
-                    <span className="act"><button className="icon-btn" title="删除" onClick={(e) => { e.stopPropagation(); s.deleteArtifact(p.id, a.id); }}><Icon name="ri-delete-bin-6-line" /></button></span>
+                    <span className="act"><button className="icon-btn" title="删除" aria-label="删除" onClick={(e) => { e.stopPropagation(); s.deleteArtifact(p.id, a.id); }}><Icon name="ri-delete-bin-6-line" /></button></span>
                   </div>
                 );
               })}
@@ -127,7 +127,7 @@ export function NewDialog() {
   return (
     <div className="modal-mask" onMouseDown={() => s.setNewDialog(null)}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-h"><Icon name={m.icon} size={18} />用模板「{m.name}」开始<span className="spacer" /><button className="icon-btn" onClick={() => s.setNewDialog(null)}><Icon name="ri-close-line" /></button></div>
+        <div className="modal-h"><Icon name={m.icon} size={18} />用模板「{m.name}」开始<span className="spacer" /><button className="icon-btn" title="关闭" aria-label="关闭" onClick={() => s.setNewDialog(null)}><Icon name="ri-close-line" /></button></div>
         <div className="modal-b">
           <div className="hint" style={{ marginBottom: 12 }}>{m.description}</div>
           <div className="field">
@@ -172,8 +172,8 @@ export function AppDialog() {
   if (!d) return null;
   return (
     <div className="modal-mask" onMouseDown={() => d.resolve(false)}>
-      <div className="modal" style={{ width: 440 }} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-h">{d.danger ? <Icon name="ri-error-warning-line" style={{ color: 'var(--err)' }} /> : <Icon name="ri-question-line" />}{d.title}</div>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" style={{ width: 440 }} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-h" id="app-dialog-title">{d.danger ? <Icon name="ri-error-warning-line" style={{ color: 'var(--err)' }} /> : <Icon name="ri-question-line" />}{d.title}</div>
         {d.body && <div className="modal-b" style={{ color: 'var(--text2)' }}>{d.body}</div>}
         <div className="modal-f">
           {d.cancel !== null && <button className="btn" onClick={() => d.resolve(false)}>{d.cancel ?? '取消'}</button>}
@@ -194,7 +194,7 @@ export function SaveTemplateDialog() {
   return (
     <div className="modal-mask" onMouseDown={() => s.setSaveTpl(null)}>
       <div className="modal" style={{ width: 480 }} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-h"><Icon name="ri-bookmark-line" />存为模板<span className="spacer" /><button className="icon-btn" onClick={() => s.setSaveTpl(null)}><Icon name="ri-close-line" /></button></div>
+        <div className="modal-h"><Icon name="ri-bookmark-line" />存为模板<span className="spacer" /><button className="icon-btn" title="关闭" aria-label="关闭" onClick={() => s.setSaveTpl(null)}><Icon name="ri-close-line" /></button></div>
         <div className="modal-b">
           <div className="field"><label>模板名称</label><input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} /></div>
           <div className="field"><label>一句话说明（可选）</label><input className="input" value={desc} placeholder="例如：适合 2~5 天的团队活动" onChange={(e) => setDesc(e.target.value)} /></div>
@@ -216,7 +216,7 @@ export function HelpDialog() {
   return (
     <div className="modal-mask" onMouseDown={() => s.setHelpOpen(false)}>
       <div className="modal" style={{ width: 460 }} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-h"><Icon name="ri-keyboard-line" />快捷键<span className="spacer" /><button className="icon-btn" onClick={() => s.setHelpOpen(false)}><Icon name="ri-close-line" /></button></div>
+        <div className="modal-h"><Icon name="ri-keyboard-line" />快捷键<span className="spacer" /><button className="icon-btn" title="关闭" aria-label="关闭" onClick={() => s.setHelpOpen(false)}><Icon name="ri-close-line" /></button></div>
         <div className="modal-b"><table className="kbd-table"><tbody>{SHORTCUTS.map(([k, v]) => <tr key={k}><td>{k.split(' / ').map((x, i) => <span key={x}>{i > 0 && ' / '}{x.split(' + ').map((y, j) => <span key={y}>{j > 0 && ' + '}<span className="kbd">{y}</span></span>)}</span>)}</td><td>{v}</td></tr>)}</tbody></table></div>
       </div>
     </div>

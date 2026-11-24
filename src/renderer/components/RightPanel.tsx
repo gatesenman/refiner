@@ -111,10 +111,10 @@ export function Inspector({ floating }: { floating?: boolean } = {}) {
   return (
     <div className="sec inspector">
       <div className="sec-h"><span title={n.title}>{floating ? `${s.multiSel.length >= 2 ? `已选 ${s.multiSel.length} 处 · 当前` : '选中'}：「${n.title.slice(0, 14)}${n.title.length > 14 ? '…' : ''}」` : '选中部分'}</span><span className="row" style={{ gap: 2 }}>
-        {n.pinned?.length ? <button className="icon-btn" title={`取消固定（手动编辑过：${n.pinned.join(', ')}）`} onClick={() => s.unpinNode(n.id)}><Icon name="ri-pushpin-2-fill" /></button> : null}
-        <button className="icon-btn" title={n.locked ? '解锁' : '锁定'} onClick={() => set({ locked: !n.locked }, n.locked ? '解锁' : '锁定')}><Icon name={n.locked ? 'ri-lock-unlock-line' : 'ri-lock-line'} /></button>
-        {n.id !== a.root.id && <button className="icon-btn" title="删除" onClick={() => { s.manualEdit(removeNode(a.root, n.id), '删除节点'); s.setSelectedId(undefined); s.toast('已删除，按 Ctrl+Z 可撤销', 'info', { label: '撤销', fn: () => s.undo() }); }}><Icon name="ri-delete-bin-6-line" /></button>}
-        {floating && <button className="icon-btn" title="取消选中" onClick={() => s.setSelectedId(undefined)}><Icon name="ri-close-line" /></button>}
+        {n.pinned?.length ? <button className="icon-btn" title={`取消固定（手动编辑过：${n.pinned.join(', ')}）`} aria-label={`取消固定（手动编辑过：${n.pinned.join(', ')}）`} onClick={() => s.unpinNode(n.id)}><Icon name="ri-pushpin-2-fill" /></button> : null}
+        <button className="icon-btn" title={n.locked ? '解锁' : '锁定'} aria-label={n.locked ? '解锁' : '锁定'} onClick={() => set({ locked: !n.locked }, n.locked ? '解锁' : '锁定')}><Icon name={n.locked ? 'ri-lock-unlock-line' : 'ri-lock-line'} /></button>
+        {n.id !== a.root.id && <button className="icon-btn" title="删除" aria-label="删除" onClick={() => { s.manualEdit(removeNode(a.root, n.id), '删除节点'); s.setSelectedId(undefined); s.toast('已删除，按 Ctrl+Z 可撤销', 'info', { label: '撤销', fn: () => s.undo() }); }}><Icon name="ri-delete-bin-6-line" /></button>}
+        {floating && <button className="icon-btn" title="取消选中" aria-label="取消选中" onClick={() => s.setSelectedId(undefined)}><Icon name="ri-close-line" /></button>}
       </span></div>
       {n.id !== a.root.id && (() => { const mm = maturityMap(a.root, m).get(n.id); return mm ? <div className={`mat-line mat-${mm.level}`}><span className={`mat mat-${mm.level}`} />{LEVEL_LABEL[mm.level]}{mm.reasons.length ? `：${mm.reasons.join('；')}` : '：说明具体、属性齐全'}</div> : null; })()}
       {n.id !== a.root.id && <GrainRow n={n} />}

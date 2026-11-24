@@ -87,9 +87,17 @@ export function effectiveFreedom(stages: StageDef[], i: number): FreedomSpec {
     if (p.requireTarget) requireTarget = true;
   }
   let ops = cur.ops.filter((o) => (OP_WEIGHT[o] ?? 0) <= opCap + 1e-9);
-  if (!ops.length) ops = cur.ops.slice(0, 1);
+  if (!ops.length) {
+    // 不要把已经超出上限的算子再塞回来；改用不超过 cap 的最强合法算子
+    ops = (Object.keys(OP_WEIGHT) as (keyof typeof OP_WEIGHT)[]).filter((o) => (OP_WEIGHT[o] ?? 0) <= opCap + 1e-9) as FreedomSpec['ops'];
+    if (!ops.length) ops = ['patch'];
+  }
   let scope = cur.scope.filter((x) => SCOPE_WEIGHT[x] <= scopeCap + 1e-9);
-  if (!scope.length) scope = cur.scope.slice(0, 1);
+  if (!scope.length) {
+    const all: FreedomSpec['scope'] = ['node', 'subtree', 'artifact'];
+    scope = all.filter((x) => SCOPE_WEIGHT[x] <= scopeCap + 1e-9);
+    if (!scope.length) scope = ['node'];
+  }
   const out: FreedomSpec = { ...cur, temperature: temp, ops, scope, strictness: strict };
   if (maxNew != null) out.maxNewNodes = maxNew;
   if (locked.size) out.lockedProps = [...locked];
@@ -144,4 +152,29 @@ export function describeConstraints(f: FreedomSpec, hasTarget: boolean, ctx: { h
   if (ctx.hasLocked) lines.push('- 带有 [锁定] 标记（locked: true）的已有节点必须原样保留，不要新建名为 locked 的节点');
   if (f.frozen) lines.push('- 冻结阶段：内容不得做任何修改');
   return lines.join('\n');
+}
+
+
+/** v2.13：对比「这一阶段自己声明的」和「运行时有效的」（已被前面阶段收紧） */
+export function freedomTightened(stages: StageDef[], i: number): string[] {
+  const dec = stages[i]?.freedom;
+  if (!dec) return [];
+  const eff = effectiveFreedom(stages, i);
+  const why: string[] = [];
+  if (eff.temperature < dec.temperature - 1e-9) why.push(`温度 ${dec.temperature} → ${eff.temperature}（按前面更克制的阶段）`);
+  const dOps = dec.ops.join('、'), eOps = eff.ops.join('、');
+  if (dOps !== eOps) why.push(`算子 ${dOps} → ${eOps || '（收紧）'}`);
+  const dSc = dec.scope.join('/'), eSc = eff.scope.join('/');
+  if (dSc !== eSc) why.push(`作用域 ${dSc} → ${eSc}`);
+  if (STRICT_RANK[eff.strictness] > STRICT_RANK[dec.strictness]) why.push(`严格度 ${STRICT_LABEL[dec.strictness]} → ${STRICT_LABEL[eff.strictness]}`);
+  if (dec.maxNewNodes != null && eff.maxNewNodes != null && eff.maxNewNodes < dec.maxNewNodes) why.push(`新增上限 ${dec.maxNewNodes} → ${eff.maxNewNodes}`);
+  if (eff.requireTarget && !dec.requireTarget) why.push('必须先选中目标（由前面阶段继承）');
+  if (eff.frozen && !dec.frozen) why.push('已被前面的冻结阶段卡住');
+  return why;
+}
+
+export function freedomRuntimeNote(stages: StageDef[], i: number): string {
+  const why = freedomTightened(stages, i);
+  if (!why.length) return '运行时按本阶段声明的自由度执行。';
+  return '运行时已按「自由度递减」收紧：' + why.join('；') + '。';
 }

@@ -1,6 +1,6 @@
 # 渐进 Refiner
 
-**2.3.0** · 渐进式内容精修工具：先让 AI 大胆铺开整体，再一步步只改你选中的部分；你亲手改过的内容会被保护。
+**2.13.0** · 渐进式内容精修工具：先让 AI 大胆铺开整体，再一步步只改你选中的部分；你亲手改过的内容会被保护。
 
 ## 功能特性
 
@@ -9,6 +9,7 @@
 - 可从已有 Word / PDF / Excel / XMind 等材料开始，支持参考资料、拖拽排序、并排对比版本。
 - 运行中显示生成内容，统计 tokens 与费用，支持预算上限、自动备份与 API Key 加密。
 - 你改过的内容不会被后续 AI 步骤覆盖。
+- 保存与备份更可靠；长任务中途停止会留下已完成的部分，退出后还可恢复；上游更新可三方合并；交接包可再导入。
 - 待审阅时右侧有改动清单；多处细化可逐处确认；偏好可设为所有作品并导入导出；第一次铺整体前可先看多视角备忘；可导出离线 HTML、Markdown 表格和交接 zip 包。
 
 ## 技术栈
@@ -18,7 +19,7 @@
 
 ## 从源码运行
 
-源码在仓库根目录。本仓库不包含安装包。`package.json` 版本为 2.3.0。
+源码在仓库根目录。本仓库不包含安装包。`package.json` 版本为 2.13.0。
 
 ```bash
 npm install
@@ -26,7 +27,7 @@ npm start            # 需先按 README 构建，或查看其 start/build 脚本
 npm test
 npm run build
 ```
-使用说明见 `文档/使用说明.md`（文档中的版本号以 package.json 为准，当前为 2.3.0）。
+使用说明见 `文档/使用说明.md`（文档中的版本号以 package.json 为准，当前为 2.13.0）。
 
 ## 文档
 
@@ -47,7 +48,7 @@ npm run build
 
 # Refiner
 
-**2.3.0** · A progressive refinement tool: let AI sketch the whole piece first, then tighten only what you select. Edits you make yourself are protected.
+**2.13.0** · A progressive refinement tool: let AI sketch the whole piece first, then tighten only what you select. Edits you make yourself are protected.
 
 ## Features
 
@@ -56,6 +57,7 @@ npm run build
 - Start from existing Word / PDF / Excel / XMind materials, with references, drag-and-drop ordering, and side-by-side version compare.
 - Live generation preview, token and cost tracking, budget caps, automatic backups, and encrypted API keys.
 - Text you edited yourself is not overwritten by later AI steps.
+- More reliable saves and backups; cancelling a long multi-refine keeps finished parts and can resume after a crash; upstream changes can be three-way merged; handoff zips can be imported again.
 - Review sidebar for added/changed/removed parts; optional confirm-each when refining several places; preferences can be global and imported/exported; a short multi-perspective memo before the first outline; export a self-contained HTML page, Markdown tables, or a zip handoff pack.
 
 ## Tech stack
@@ -65,7 +67,7 @@ npm run build
 
 ## Getting started
 
-Source is at the repository root. This repository does not include installers. `package.json` reports version 2.3.0.
+Source is at the repository root. This repository does not include installers. `package.json` reports version 2.13.0.
 
 ```bash
 npm install
@@ -73,7 +75,7 @@ npm start            # build first if the README requires it
 npm test
 npm run build
 ```
-The user guide is `文档/使用说明.md` (trust package.json for the current version, now 2.3.0).
+The user guide is `文档/使用说明.md` (trust package.json for the current version, now 2.13.0).
 
 ## Documentation
 

@@ -64,7 +64,7 @@ export function CompareDialog() {
       <div className="modal cmp-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-h"><Icon name="ri-layout-column-line" />并排对比<span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>　{counts.mod} 处改动 · {counts.add} 处新增 · {counts.del} 处删除</span><span className="spacer" />
           <span className="cmp-legend"><i className="lg-add" />新增<i className="lg-del" />删除<i className="lg-mod" />改动</span>
-          <button className="icon-btn" title="关闭（Esc）" onClick={() => s.setCompare(null)}><Icon name="ri-close-line" /></button></div>
+          <button className="icon-btn" title="关闭（Esc）" aria-label="关闭（Esc）" onClick={() => s.setCompare(null)}><Icon name="ri-close-line" /></button></div>
         <div className="cmp-grid cmp-head">
           <div className="row">{sel('a')}<span className="spacer" />{c.a !== a.head && <button className="btn sm ghost" onClick={() => { s.rollback(c.a); s.setCompare(null); }}>整版用这一版</button>}</div>
           <div className="row">{sel('b')}<span className="spacer" />{c.b !== a.head && <button className="btn sm ghost" onClick={() => { s.rollback(c.b); s.setCompare(null); }}>整版用这一版</button>}</div>

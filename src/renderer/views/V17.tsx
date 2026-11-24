@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { Icon } from '../icons/Icon';
-import { readiness, roughest, roughCount, effectiveFreedom, LEVEL_LABEL } from '../../core';
+import { readiness, roughest, roughCount, effectiveFreedom, LEVEL_LABEL, recoveryNotices } from '../../core';
 import type { OpKind } from '../../core';
 import { handoff, handoffCsv, handoffIcs, stepInfo } from '../flow';
 
@@ -106,11 +106,39 @@ export function SourceBanner() {
   return (
     <div className="banner info">
       <Icon name="ri-refresh-line" />
-      <span style={{ flex: 1 }}>上游「{up.title}」在你新建这个作品之后有更新{n > 0 ? `（${n} 次修改）` : ''}。要用它的最新内容作为参考吗？已经生成的内容不会被自动改动。</span>
-      <button className="btn sm" onClick={s.refreshFromSource}>更新参考资料</button>
+      <span style={{ flex: 1 }}>上游「{up.title}」在你新建这个作品之后有更新{n > 0 ? `（${n} 次修改）` : ''}。可以只更新参考资料，或试着把上游改动三方合并进来（两边都改过的地方会保留你的并做标记）。</span>
+      <button className="btn sm" onClick={s.mergeFromSource}>合并上游改动</button>
+      <button className="btn sm ghost" onClick={s.refreshFromSource}>只更新参考资料</button>
       <button className="btn sm ghost" onClick={s.openSource}>去看看</button>
-      <button className="icon-btn" title="忽略这次更新" onClick={s.dismissSource}><Icon name="ri-close-line" /></button>
+      <button className="icon-btn" title="忽略这次更新" aria-label="忽略这次更新" onClick={s.dismissSource}><Icon name="ri-close-line" /></button>
     </div>
+  );
+}
+
+export function RecoveryBanner() {
+  const s = useStore();
+  const a = s.currentArtifact;
+  const notices = recoveryNotices({ artifact: a ?? undefined, lastPartial: !!s.run?.warnings?.some((w: string) => /已停止|已保留/.test(w)) && !s.run?.running, lastWarnings: s.run?.warnings });
+  const pending = notices.filter((n) => n.action === 'apply-journal');
+  const rest = notices.filter((n) => n.action !== 'apply-journal');
+  if (!pending.length && !rest.length) return null;
+  return (
+    <>
+      {pending.map((n, i) => (
+        <div className="banner info" key={'j'+i}>
+          <Icon name="ri-history-line" />
+          <span style={{ flex: 1 }}>{n.text}</span>
+          <button className="btn sm" onClick={() => s.applyRunJournal()}>补成一个版本</button>
+          <button className="btn sm ghost" onClick={() => s.discardRunJournal()}>丢掉</button>
+        </div>
+      ))}
+      {rest.map((n, i) => (
+        <div className={`banner ${n.kind === 'warn' ? 'warn' : 'info'}`} key={'r'+i}>
+          <Icon name="ri-information-line" />
+          <span style={{ flex: 1 }}>{n.text}</span>
+        </div>
+      ))}
+    </>
   );
 }
 

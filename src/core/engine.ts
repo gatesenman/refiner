@@ -823,16 +823,31 @@ export async function runStageMulti(req: RunRequest, targetIds: string[], onTarg
   const errs: (string | null)[] = targets.map(() => null);
   const errLogs: AgentLogEntry[][] = targets.map(() => []);
   const active = new Set<string>(); let done = 0; let next = 0;
+  let cancelled = false;
+  let journalRoot = base.root;
+  const doneIds: { id: string; title: string }[] = [];
+  let pub: Promise<void> = Promise.resolve();
+  const publish = (id: string, title: string, sub: import('./types').ArtNode) => {
+    pub = pub.then(() => {
+      journalRoot = replaceNode(journalRoot, id, sub);
+      if (!doneIds.some((d) => d.id === id)) doneIds.push({ id, title });
+      req.onCheckpoint?.({ artifactId: base.id, stageIndex: req.stageIndex, op: req.op, startedAt: Date.now(), done: [...doneIds], root: journalRoot });
+    });
+    return pub;
+  };
   const worker = async () => {
     while (next < targets.length) {
+      if (req.signal?.aborted || cancelled) { cancelled = true; return; }
       const i = next++;
       const t = targets[i];
-      if (req.signal?.aborted) throw new EngineError('已取消');
+      if (req.signal?.aborted) { cancelled = true; return; }
       active.add(t.title); onTarget?.(i, t.title, { done, active: [...active], par });
       try {
         results[i] = await runStage({ ...req, artifact: base, targetId: t.id });
+        const sub = results[i] && findNode(results[i]!.root, t.id);
+        if (sub) await publish(t.id, t.title, sub);
       } catch (e: any) {
-        if (req.signal?.aborted || String(e?.message) === '已取消') throw e;
+        if (req.signal?.aborted || String(e?.message) === '已取消') { cancelled = true; return; }
         if (e?.log) errLogs[i] = e.log;
         errs[i] = String(e?.message ?? e).slice(0, 80);
       } finally {
@@ -841,6 +856,7 @@ export async function runStageMulti(req: RunRequest, targetIds: string[], onTarg
     }
   };
   await Promise.all(Array.from({ length: par }, worker));
+  await pub;
   // ── reduce（延迟汇总）：按原顺序把各目标子树并回底稿 ──
   let root = base.root;
   const log: AgentLogEntry[] = []; const warnings: string[] = []; const doneT: string[] = [];
@@ -859,11 +875,17 @@ export async function runStageMulti(req: RunRequest, targetIds: string[], onTarg
     Object.assign(whys, s?.whys ?? {});
     doneT.push(t.title); last = r;
   });
-  if (!last || JSON.stringify(root) === JSON.stringify(base.root)) { const err = new RunFailedError(warnings[0] ?? '这次没有改动任何部分', 'empty'); err.log = log; throw err; }
+  if (!last || JSON.stringify(root) === JSON.stringify(base.root)) {
+    if (cancelled || req.signal?.aborted) throw new EngineError('已取消');
+    const err = new RunFailedError(warnings[0] ?? '这次没有改动任何部分', 'empty'); err.log = log; throw err;
+  }
   const stage = req.manifest.stages[req.stageIndex];
   const short = (x: string) => (x.length > 10 ? x.slice(0, 10) + '…' : x);
-  const label = `${stage.name} · ${OP_LABEL[req.op] ?? req.op} ${doneT.length} 处：${doneT.map((x) => `「${short(x)}」`).join('')}`;
-  const version: Version = { ...(last as RunResult).version, id: uid('v'), parentId: base.head, targetId: undefined, label, root, log, createdAt: Date.now() };
+  const pending = targets.length - doneT.length;
+  const stopped = cancelled || !!req.signal?.aborted;
+  if (stopped) warnings.unshift(`已停止：已保留 ${doneT.length} 处改动` + (pending ? `，未处理 ${pending} 处` : ''));
+  const label = `${stopped ? '已停止，已保留 · ' : ''}${stage.name} · ${OP_LABEL[req.op] ?? req.op} ${doneT.length} 处：${doneT.map((x) => `「${short(x)}」`).join('')}`;
+  const version: Version = { ...(last as RunResult).version, id: uid('v'), parentId: base.head, targetId: undefined, label, root, log, createdAt: Date.now(), ...(stopped ? { partial: true } : {}) };
   version.summary = { ...(scores.length ? { scoreFrom: Math.min(...scores), scoreTo: Math.max(...scores) } : {}), issues: issues.length ? [...new Set(issues)].slice(0, 4) : undefined, ...(questions.length ? { questions: questions.slice(0, 3) } : {}), ...(Object.keys(whys).length ? { whys } : {}) };
   return { root, log, warnings, version };
 }

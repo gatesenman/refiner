@@ -22,6 +22,8 @@ export interface ArtNode {
   kind?: string;
   /** 由程序从说明文字推断出的属性 key（显示“推断”标记） */
   inferred?: string[];
+  /** v2.9 三方合并冲突：保留己方正文，这里记下上游的版本供对照 */
+  conflict?: { theirsTitle: string; theirsContent?: string };
 }
 
 /** 固定事实：澄清 / 步骤间追问的回答，注入后续每一步 */
@@ -62,6 +64,8 @@ export interface Artifact {
   source?: { projectId: string; artifactId: string; title: string; versionId: string; refId?: string; dismissed?: string };
   /** v2.2 第一次铺整体前的多视角备忘 */
   survey?: import('./survey').Survey;
+  /** v2.7 未提交的长任务检查点（崩溃或退出后可选择应用或丢弃） */
+  runJournal?: import('./journal').RunCheckpoint;
 }
 
 /* ───────────── 2. 版本树 ───────────── */
@@ -83,6 +87,8 @@ export interface Version {
   fork?: { group: string; persona: string; score?: number };
   /** 用户已审阅（全部保留 / 之后又运行了新操作）：不再高亮改动 */
   reviewed?: boolean;
+  /** 长任务中途停止或崩溃恢复：这一版只包含已完成的部分 */
+  partial?: boolean;
   /** 撤回某一处 AI 改动而产生的版本（审阅中间态，仍以所属 AI 版本为基准高亮） */
   revert?: boolean;
   /** 审阅时逐条“保留”的节点 id */
@@ -327,6 +333,8 @@ export interface RunRequest {
   survey?: boolean;
   /** 多人设交叉设计时，本次运行所代表的人设 */
   persona?: { id: string; name: string; brief: string };
+  /** v2.7 每完成一处就汇报当前已合并的树，供持久化检查点 */
+  onCheckpoint?: (cp: import('./journal').RunCheckpoint) => void;
 }
 
 export interface RunResult {

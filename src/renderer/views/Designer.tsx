@@ -163,7 +163,7 @@ function IconPicker({ current, onPick, onClose }: { current?: string; onPick: (n
   return (
     <div className="modal-mask" onClick={onClose}>
       <div className="modal" style={{ width: 620 }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-h"><Icon name="ri-apps-2-line" size={18} />选择图标<span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>（Remix Icon · {ICON_NAMES.length} 个，离线内置）</span><span className="spacer" /><button className="icon-btn" onClick={onClose}><Icon name="ri-close-line" /></button></div>
+        <div className="modal-h"><Icon name="ri-apps-2-line" size={18} />选择图标<span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>（Remix Icon · {ICON_NAMES.length} 个，离线内置）</span><span className="spacer" /><button className="icon-btn" onClick={onClose} title="关闭" aria-label="关闭"><Icon name="ri-close-line" /></button></div>
         <div className="modal-b">
           <div className="row" style={{ marginBottom: 8 }}>
             <input className="input" autoFocus placeholder="搜索英文关键词，如 book、calendar、chart、user…" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />

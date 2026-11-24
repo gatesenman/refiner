@@ -60,7 +60,13 @@ export async function runStageConfirming(
   };
 
   for (let i = 0; i < targets.length; i++) {
-    if (req.signal?.aborted) throw new EngineError('已取消');
+    if (req.signal?.aborted) {
+      if (kept.length && JSON.stringify(root) !== JSON.stringify(baseArt.root)) {
+        warnings.push('已停止，已保留已确认的部分');
+        break;
+      }
+      throw new EngineError('已取消');
+    }
     const t = targets[i];
     onTarget?.(i, t.title, { done: i, active: [t.title], par: 1 });
     const live: Artifact = { ...baseArt, root };
@@ -111,6 +117,7 @@ export async function runStageConfirming(
     ...(last as unknown as RunResult).version,
     id: uid('v'), parentId: baseArt.head, targetId: undefined, label, root, log, createdAt: Date.now(),
     instruction: req.instruction,
+    ...((kept.length < targets.length || warnings.some((w) => w.includes('已停止') || w.includes('未处理'))) ? { partial: true } : {}),
     summary: {
       ...(scores.length ? { scoreFrom: Math.min(...scores), scoreTo: Math.max(...scores) } : {}),
       issues: issues.length ? [...new Set(issues)].slice(0, 4) : undefined,

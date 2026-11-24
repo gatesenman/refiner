@@ -1,5 +1,6 @@
 import { promises as fs, existsSync } from 'fs';
 import { join } from 'path';
+import { atomicWrite, replaceDir } from '../core/persist';
 
 /** 自动备份：把 projects/ 与 settings.json 拷到 backups/<时间>-<原因>/；保留最近 N 份 */
 export interface BackupInfo { id: string; at: number; reason: string; projects: number; bytes: number }
@@ -23,7 +24,10 @@ export async function listBackups(dataDir: string): Promise<BackupInfo[]> {
   if (!existsSync(dir)) return [];
   const out: BackupInfo[] = [];
   for (const id of await fs.readdir(dir)) {
-    try { out.push(JSON.parse(await fs.readFile(join(dir, id, 'backup.json'), 'utf8'))); } catch { /* 不完整的备份忽略 */ }
+    try {
+      if (!existsSync(join(dir, id, 'projects'))) continue; // 拷贝未完成、没有 projects
+      out.push(JSON.parse(await fs.readFile(join(dir, id, 'backup.json'), 'utf8')));
+    } catch { /* 不完整的备份忽略 */ }
   }
   return out.sort((a, b) => b.at - a.at);
 }
@@ -39,7 +43,7 @@ export async function createBackup(dataDir: string, reason: string, keep = 10, n
   const r = await copyDir(join(dataDir, 'projects'), join(target, 'projects'));
   if (existsSync(join(dataDir, 'settings.json'))) await fs.copyFile(join(dataDir, 'settings.json'), join(target, 'settings.json'));
   const info: BackupInfo = { id, at: now, reason, projects: r.files, bytes: r.bytes };
-  await fs.writeFile(join(target, 'backup.json'), JSON.stringify(info), 'utf8');
+  await atomicWrite(join(target, 'backup.json'), JSON.stringify(info));
   await pruneBackups(dataDir, keep);
   return info;
 }
@@ -62,7 +66,6 @@ export async function restoreBackup(dataDir: string, id: string, keep = 10): Pro
   const src = join(dataDir, 'backups', id, 'projects');
   if (!existsSync(src)) throw new Error('备份不存在或已损坏');
   const safety = await createBackup(dataDir, 'before-restore', keep + 1);
-  await fs.rm(join(dataDir, 'projects'), { recursive: true, force: true });
-  const r = await copyDir(src, join(dataDir, 'projects'));
+  const r = await replaceDir(src, join(dataDir, 'projects'));
   return { safety, restored: r.files };
 }

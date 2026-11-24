@@ -51,3 +51,35 @@ export function toMermaid(root: ArtNode, m: TypeManifest): { kind: 'gantt' | 'mi
   rec(root, 0);
   return { kind: 'mindmap', text: lines.join('\n') + '\n' };
 }
+
+
+/** 从 JSON Canvas 白板还原树（与 toJSONCanvas 对得上；无连线时按 x 分层、y 排序） */
+export function fromJSONCanvas(doc: { nodes?: any[]; edges?: any[] }): ArtNode {
+  const nodes = Array.isArray(doc?.nodes) ? doc.nodes.filter((n) => n && n.id) : [];
+  const edges = Array.isArray(doc?.edges) ? doc.edges : [];
+  const parseText = (text: string): { title: string; content?: string } => {
+    const raw = String(text ?? '').replace(/^#\s+/, '').replace(/^\*\*/, '').replace(/\*\*$/, '');
+    const parts = raw.split(/\n\n/);
+    const title = (parts[0] ?? '').replace(/^\*\*|\*\*$/g, '').replace(/^#\s+/, '').trim() || '（未命名）';
+    const content = parts.slice(1).join('\n\n').trim();
+    return content ? { title, content } : { title };
+  };
+  const kids = new Map<string, string[]>();
+  const incoming = new Set<string>();
+  for (const e of edges) {
+    if (!e?.fromNode || !e?.toNode) continue;
+    kids.set(e.fromNode, [...(kids.get(e.fromNode) ?? []), e.toNode]);
+    incoming.add(e.toNode);
+  }
+  const byId = new Map(nodes.map((n) => [String(n.id), n]));
+  const roots = nodes.filter((n) => !incoming.has(n.id));
+  const rootN = roots.sort((a, b) => (a.x ?? 0) - (b.x ?? 0))[0] ?? nodes[0];
+  if (!rootN) return { id: 'root', title: '（空）' };
+  const build = (id: string): ArtNode => {
+    const n = byId.get(id);
+    const { title, content } = parseText(n?.text ?? '');
+    const children = (kids.get(id) ?? []).map(build);
+    return { id, title, ...(content ? { content } : {}), ...(children.length ? { children } : {}) };
+  };
+  return build(String(rootN.id));
+}
